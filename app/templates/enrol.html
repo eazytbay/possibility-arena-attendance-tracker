@@ -5,8 +5,14 @@
 {% block body %}<div class="sheet">
 <p class="sub">Take the person's details. They are saved and marked present. If they are already on record, search for them under Check-in instead.</p>
 {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+{% if notice %}<div class="error" role="alert" style="background:#fff7e0;border-color:#e0b000;color:#4a3a00">
+<strong>{{ notice.name }}</strong> is already on record{% if notice.phone %} with {{ notice.phone }}{% endif %} ({{ notice.category }}{% if notice.department %}, {{ notice.department }}{% endif %}).
+{% if notice.present_at %}<br>They were already marked present today at {{ notice.present_at }}. Nothing more is needed.{% endif %}
+{% if not notice.same_name %}<br>The name you typed is different from the name on record.{% endif %}
+<br>If this is the same person and you want to update their details, press <strong>Save and mark present</strong> below. If not, change the number or name. Any children you typed need to be added again.</div>{% endif %}
 <form method="post" autocomplete="off" enctype="multipart/form-data">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{% if notice %}<input type="hidden" name="confirmed" value="1">{% endif %}
 <label for="n" style="margin-top:0">Full name</label><input id="n" name="full_name" required autofocus value="{{ form.get('full_name','') }}">
 <label for="ph">Mobile number</label><input id="ph" name="phone" type="tel" inputmode="tel" placeholder="08012345678" value="{{ form.get('phone','') }}">
 <p class="sub" style="margin:6px 0 0">Required, except for teens without a phone. For a teen with no phone, leave it empty and search by name next time.</p>

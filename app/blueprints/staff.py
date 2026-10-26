@@ -1,3 +1,5 @@
+from zoneinfo import ZoneInfo
+
 import re
 from datetime import datetime, timezone
 
@@ -32,7 +34,18 @@ def enrol():
             error = str(exc)
         res = None
         if not error:
-            res, error = register_full(form, svc, user.id, "staff", photo)
+            res, error = register_full(form, svc, user.id, "staff", photo, confirmed=form.get("confirmed") == "1")
+        if not error and res.get("confirm"):
+            existing = res["confirm"]
+            tz = ZoneInfo(current_app.config["TIMEZONE"])
+            at = res["checked_in_at"]
+            notice = {"name": existing.full_name, "category": existing.category, "department": existing.department,
+                      "phone": existing.phone, "present_at": at.astimezone(tz).strftime("%I:%M%p").lstrip("0").lower() if at else None,
+                      "same_name": " ".join(existing.full_name.lower().split()) == " ".join(form.get("full_name", "").lower().split())}
+            count = Attendance.query.filter_by(service_id=svc.id).count()
+            return render_template("enrol.html", service=svc, count=count, form=form, error=None, notice=notice,
+                                   categories=REGISTER_CATEGORIES, sexes=SEXES, departments=DEPARTMENTS,
+                                   age_groups=AGE_GROUPS, months=MONTHS)
         if not error:
             p = res["person"]
             audit(user.username, "enrol", f"{p.id}:{p.full_name}")
@@ -42,7 +55,7 @@ def enrol():
     count = Attendance.query.filter_by(service_id=svc.id).count()
     return render_template("enrol.html", service=svc, count=count, form=form, error=error,
                            categories=REGISTER_CATEGORIES, sexes=SEXES, departments=DEPARTMENTS, age_groups=AGE_GROUPS,
-                           months=MONTHS)
+                           months=MONTHS, notice=None)
 
 
 @bp.get("/photo/<int:pid>.jpg")

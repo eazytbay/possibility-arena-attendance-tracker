@@ -269,10 +269,21 @@ def people_csv(people=None) -> str:
     return buf.getvalue()
 
 
-def register_full(f, svc: Service, user_id: int | None = None, source: str = "self", photo: bytes | None = None):
+def _find_existing(name: str, phone: str | None) -> Person | None:
+    if phone:
+        return Person.query.filter_by(phone=phone).first()
+    return Person.query.filter(db.func.lower(Person.full_name) == name.lower(),
+                               Person.category == "teen", Person.phone.is_(None)).first()
+
+
+def register_full(f, svc: Service, user_id: int | None = None, source: str = "self", photo: bytes | None = None,
+                  confirmed: bool = False):
     """Validate one registration form, save the adult and children, mark present.
 
     Returns (result_dict, None) on success or (None, error_message).
+    If the person is already on record under a different name, or is already marked present today, nothing is
+    changed and the result is {"confirm": <person on record>, "checked_in_at": <time or None>} so the caller can
+    ask staff "same person?". Passing confirmed=True goes ahead and updates the details.
     """
     raw_phone = (f.get("phone") or "").strip()
     phone = normalize_phone(raw_phone) if raw_phone else None
@@ -295,6 +306,13 @@ def register_full(f, svc: Service, user_id: int | None = None, source: str = "se
         return None, berr
     if category == "visitor":
         department = None
+    if not confirmed:
+        existing = _find_existing(name, phone)
+        if existing:
+            att = Attendance.query.filter_by(service_id=svc.id, person_id=existing.id).first()
+            same_name = " ".join(existing.full_name.lower().split()) == name.lower()
+            if att or not same_name:
+                return {"confirm": existing, "checked_in_at": att.checked_in_at if att else None}, None
     person, created = upsert_adult(name, phone, category, department, (bm, bd), sex)
     if photo:
         person.photo, person.has_photo = photo, True

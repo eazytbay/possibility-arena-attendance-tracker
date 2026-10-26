@@ -12,7 +12,9 @@ def enrol(client, **over):
 def test_teen_without_phone_registers_and_is_not_duplicated(client):
     login(client, "usher")
     assert enrol(client, full_name="Tosin Bello", phone="", category="teen", sex="female").status_code == 302
-    assert enrol(client, full_name="tosin bello", phone="", category="teen").status_code == 302
+    again = enrol(client, full_name="tosin bello", phone="", category="teen")
+    assert again.status_code == 200 and b"already on record" in again.data  # asks, does not duplicate
+    assert enrol(client, full_name="tosin bello", phone="", category="teen", confirmed="1").status_code == 302
     teens = Person.query.filter_by(category="teen").all()
     assert len(teens) == 1 and teens[0].phone is None and teens[0].sex == "female"
     assert Attendance.query.count() == 1

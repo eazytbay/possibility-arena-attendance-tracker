@@ -55,6 +55,8 @@ def register():
     res, error = register_full(f, svc, None, "self", photo)
     if error:
         return _page("full", f, error, 400)
+    if res.get("confirm"):
+        return _page("full", f, "This number is already registered. Please ask an usher to check you in.", 409)
     person = res["person"]
     return render_template("done.html", name=person.full_name.split()[0], status=res["status"],
                            children=res["kids"], welcome_back=not res["created"])
