@@ -64,3 +64,29 @@ def test_self_registration_cannot_overwrite_someone_elses_record(client, app):
                                        "category": "visitor", "step": "full"})
     assert Person.query.one().full_name == "Ada Obi"
     assert r.status_code in (200, 400, 409)
+
+
+def test_children_typed_are_kept_when_the_notice_appears(client):
+    login(client, "usher")
+    enrol(client)
+    r = enrol(client, child_name=["Tomi Obi"], child_age=["3-5"], child_notes=["peanut allergy"], confirmed="")
+    assert r.status_code == 200 and b"Tomi Obi" in r.data and b"peanut allergy" in r.data
+
+
+def test_adding_a_child_to_a_parent_already_on_record(client):
+    login(client, "usher")
+    enrol(client)
+    r = enrol(client, child_name=["Tomi Obi"], child_age=["3-5"], child_notes=[""], confirmed="1")
+    assert r.status_code == 302
+    kid = Person.query.filter_by(category="child").one()
+    assert kid.guardian.full_name == "Ada Obi" and Attendance.query.count() == 1
+
+
+def test_children_page_shows_totals_and_age_filters(client):
+    login(client, "usher")
+    enrol(client, child_name=["Tomi Obi", "Bayo Obi"], child_age=["3-5", "6-9"], child_notes=["", ""])
+    from tests.conftest import login as lg
+    c2 = client.application.test_client()
+    lg(c2, "kids")
+    page = c2.get("/children").data.decode()
+    assert "2</strong> children on record" in page and "3-5 (1)" in page and "6-9 (1)" in page

@@ -18,6 +18,14 @@ from .auth import current_user, role_required
 bp = Blueprint("staff", __name__)
 
 
+def _kids_prefill(form):
+    if not hasattr(form, "getlist"):
+        return []
+    names, ages, notes = form.getlist("child_name"), form.getlist("child_age"), form.getlist("child_notes")
+    return [{"name": n, "age": ages[i] if i < len(ages) else "", "notes": notes[i] if i < len(notes) else ""}
+            for i, n in enumerate(names) if n.strip()]
+
+
 @bp.route("/enrol", methods=["GET", "POST"])
 @role_required("usher", "media")
 def enrol():
@@ -43,7 +51,7 @@ def enrol():
                       "phone": existing.phone, "present_at": at.astimezone(tz).strftime("%I:%M%p").lstrip("0").lower() if at else None,
                       "same_name": " ".join(existing.full_name.lower().split()) == " ".join(form.get("full_name", "").lower().split())}
             count = Attendance.query.filter_by(service_id=svc.id).count()
-            return render_template("enrol.html", service=svc, count=count, form=form, error=None, notice=notice,
+            return render_template("enrol.html", service=svc, count=count, form=form, error=None, notice=notice, prefill=_kids_prefill(form),
                                    categories=REGISTER_CATEGORIES, sexes=SEXES, departments=DEPARTMENTS,
                                    age_groups=AGE_GROUPS, months=MONTHS)
         if not error:
@@ -55,7 +63,7 @@ def enrol():
     count = Attendance.query.filter_by(service_id=svc.id).count()
     return render_template("enrol.html", service=svc, count=count, form=form, error=error,
                            categories=REGISTER_CATEGORIES, sexes=SEXES, departments=DEPARTMENTS, age_groups=AGE_GROUPS,
-                           months=MONTHS, notice=None)
+                           months=MONTHS, notice=None, prefill=_kids_prefill(form))
 
 
 @bp.get("/photo/<int:pid>.jpg")
@@ -150,7 +158,11 @@ def children():
                      "state": "released" if a and a.released_at else "in" if a else "out",
                      "code": a.pickup_code if a and not a.released_at else ""})
     rows.sort(key=lambda r: (not r["guardian_present"], r["name"]))
-    return render_template("children.html", rows=rows, service=svc)
+    ages = {}
+    for r in rows:
+        ages[r["age"] or "age ?"] = ages.get(r["age"] or "age ?", 0) + 1
+    return render_template("children.html", rows=rows, service=svc, ages=ages,
+                           checked_in=sum(1 for r in rows if r["state"] == "in"))
 
 
 @bp.post("/api/children/<int:pid>/checkin")

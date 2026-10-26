@@ -44,6 +44,7 @@ d.innerHTML=`<label>Child's name</label><input name="child_name" maxlength="120"
 <label>Age group</label><select name="child_age"><option value="">Choose</option>${ages.map(a=>`<option>${a}</option>`).join('')}</select>
 <label>Allergies or notes</label><input name="child_notes" maxlength="300">`;document.getElementById('kids').appendChild(d)}
 document.getElementById('addkid').onclick=addKid;
+const pre={{ prefill|tojson }};pre.forEach(k=>{addKid();const r=document.querySelectorAll('#kids .child-row');const l=r[r.length-1];l.querySelector('[name=child_name]').value=k.name;l.querySelector('[name=child_age]').value=k.age;l.querySelector('[name=child_notes]').value=k.notes});
 const cat=document.getElementById('c'),dept=document.getElementById('dept');
 function sync(){dept.style.display=cat.value==='visitor'?'none':''}cat.onchange=sync;sync();
 </script>

@@ -8,10 +8,12 @@
 <input id="rc" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="4 digits">
 <button class="full" id="rel" type="button">Release child</button><div id="rmsg" role="status" style="margin-top:10px"></div></div>
 <h2>Children</h2>
+<p class="sub"><strong>{{ rows|length }}</strong> children on record · <strong>{{ checked_in }}</strong> checked in now</p>
+<div class="row" id="chips" style="flex-wrap:wrap;gap:6px;margin:8px 0"><button type="button" class="ghost" data-age="">All</button>{% for a, n in ages.items() %}<button type="button" class="ghost" data-age="{{ a }}">{{ a }} ({{ n }})</button>{% endfor %}<button type="button" class="ghost" data-age="__in">Checked in</button></div>
 <input id="f" type="search" placeholder="Filter by child or parent name">
 <div id="list">
 {% for r in rows %}
-<div class="card row" data-text="{{ (r.name ~ ' ' ~ r.guardian)|lower }}">
+<div class="card row" data-text="{{ (r.name ~ ' ' ~ r.guardian)|lower }}" data-age="{{ r.age or 'age ?' }}" data-state="{{ r.state }}">
 <div><strong>{{ r.name }}</strong> <span class="pill">{{ r.age or 'age ?' }}</span>{% if r.guardian_present %}<span class="pill g">parent present</span>{% endif %}<br>
 <span class="sub">Parent: {{ r.guardian or 'unknown' }}</span>
 {% if r.notes %}<br><span class="pill r">Note: {{ r.notes }}</span>{% endif %}
@@ -21,7 +23,10 @@
 </div></div>{% endblock %}
 {% block script %}
 <script>
-document.getElementById('f').oninput=e=>{const v=e.target.value.toLowerCase();document.querySelectorAll('#list .card').forEach(c=>c.style.display=c.dataset.text.includes(v)?'':'none')};
+let ageSel='';
+function applyFilter(){const v=document.getElementById('f').value.toLowerCase();document.querySelectorAll('#list .card').forEach(c=>{const okAge=!ageSel||(ageSel==='__in'?c.dataset.state==='in':c.dataset.age===ageSel);c.style.display=(okAge&&c.dataset.text.includes(v))?'':'none'})}
+document.getElementById('f').oninput=applyFilter;
+document.getElementById('chips').onclick=e=>{const b=e.target.closest('button[data-age]');if(!b)return;ageSel=b.dataset.age;applyFilter()};
 document.getElementById('list').onclick=async e=>{const b=e.target.closest('button[data-id]');if(!b)return;b.disabled=true;
 const {ok,data}=await post('/api/children/'+b.dataset.id+'/checkin');if(ok){b.outerHTML='<span class="code">'+data.code+'</span>'}else{b.disabled=false;alert(data.error||'Failed')}};
 document.getElementById('rel').onclick=async()=>{const {ok,data}=await post('/api/children/release',{code:document.getElementById('rc').value});
