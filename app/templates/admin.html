@@ -22,7 +22,11 @@
 <div class="stat"><b>{{ people_total }}</b><span>people on record</span></div></div>
 <h2>Download</h2>
 <div class="btn-row"><a class="btn" href="{{ url_for('admin.export_attendance') }}">Today's attendance (CSV)</a>
-<a class="btn ghost" href="{{ url_for('admin.export_people') }}">All people (CSV)</a></div>
+<a class="btn ghost" href="{{ url_for('admin.export_people') }}">All people (CSV)</a>
+<a class="btn ghost" href="{{ url_for('admin.export_all_attendance') }}">All attendance, every date (CSV)</a></div>
+<form method="get" action="{{ url_for('admin.export_attendance') }}" class="card" style="margin-top:14px">
+<label for="dt" style="margin-top:0">Attendance for a particular date</label>
+<div class="row"><input id="dt" type="date" name="date" required style="flex:1"><button type="submit">Download</button></div></form>
 <h2>By category</h2>
 <table>{% for c,n in by_cat.items() %}<tr><td>{{ c|capitalize }}</td><td>{{ n }}</td></tr>{% else %}<tr><td>No one yet.</td><td></td></tr>{% endfor %}</table>
 <h2>By department</h2>

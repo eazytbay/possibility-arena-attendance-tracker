@@ -262,3 +262,16 @@ def test_demo_seed_and_isolation(tmp_path):
         r = c.post("/login", data={"username": "demo-owner", "password": "demo-password"})
         assert r.status_code == 302
         assert c.get("/admin/export/attendance.csv").status_code == 200
+
+
+def test_export_by_date_and_all(client):
+    reg(client)
+    login(client, "admin")
+    from app.services.attendance import today_local
+    d = today_local().isoformat()
+    body = client.get(f"/admin/export/attendance.csv?date={d}").data.decode("utf-8-sig")
+    assert "Ada Obi" in body
+    allcsv = client.get("/admin/export/all-attendance.csv").data.decode("utf-8-sig")
+    assert allcsv.splitlines()[0].startswith("service_date") and "Ada Obi" in allcsv
+    r = client.get("/admin/export/attendance.csv?date=2020-01-05", follow_redirects=True)
+    assert b"No attendance was recorded" in r.data

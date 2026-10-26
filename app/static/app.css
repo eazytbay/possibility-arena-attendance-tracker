@@ -43,8 +43,8 @@ button.ghost:hover,.btn.ghost:hover{background:#12874a14}
 button[disabled]{opacity:.6;cursor:default}
 .btn-row{display:flex;gap:10px;flex-wrap:wrap}
 /* messages */
-.error{background:#d93a3f14;border:1px solid var(--red);color:#8d1f24;padding:12px 14px;border-radius:12px;margin:0 0 1em}
-.note{background:#12874a14;border:1px solid var(--green);color:#0b5a30;padding:12px 14px;border-radius:12px;margin:1em 0}
+.error{background:#fbe9e9;border:1px solid var(--red);color:#8d1f24;padding:12px 14px;border-radius:12px;margin:0 0 1em}
+.note{background:#e6f4ec;border:1px solid var(--green);color:#0b5a30;padding:12px 14px;border-radius:12px;margin:1em 0}
 /* lists */
 .card{background:#fbfbfe;border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
 .row{display:flex;gap:12px;align-items:center;justify-content:space-between}
@@ -70,3 +70,6 @@ footer img{width:44px;height:auto;display:block;margin:0 auto 8px;border-radius:
 .demo-banner{background:#d93a3f;color:#fff;text-align:center;padding:7px 12px;font-size:.85rem;font-weight:600}
 .demo-box{margin-top:18px;font-size:.92rem}
 .demo-box code{background:#26237a14;padding:1px 6px;border-radius:6px}
+
+main>.note{position:relative;margin:0 0 12px;box-shadow:0 6px 18px #0c0b1d33;font-weight:600}
+.hero+main>.note:first-child{margin-top:60px}

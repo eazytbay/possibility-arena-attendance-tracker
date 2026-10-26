@@ -194,3 +194,21 @@ def register_full(f, svc: Service, user_id: int | None = None, source: str = "se
         note = (notes[i] if i < len(notes) else "").strip()[:300] or None
         kids.append(add_child(person, cname, age, note))
     return {"person": person, "created": created, "kids": kids or list(person.children), "status": status}, None
+
+
+def attendance_all_csv() -> str:
+    """Every attendance record across all services, one row each, for analysis."""
+    tz = ZoneInfo(current_app.config["TIMEZONE"])
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["service_date", "name", "phone", "category", "department", "guardian", "age_group",
+                "source", "checked_in_at"])
+    rows = (Attendance.query.join(Service).order_by(Service.service_date, Attendance.checked_in_at).all())
+    for a in rows:
+        p = a.person
+        w.writerow([_safe(x) for x in [
+            a.service.service_date.isoformat(), p.full_name, p.phone or "", p.category, p.department or "",
+            p.guardian.full_name if p.guardian else "", p.age_group or "", a.source,
+            a.checked_in_at.astimezone(tz).strftime("%H:%M"),
+        ]])
+    return buf.getvalue()

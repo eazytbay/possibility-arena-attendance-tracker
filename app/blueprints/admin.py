@@ -11,7 +11,7 @@ import re
 from werkzeug.security import generate_password_hash
 
 from ..models import ROLES, Attendance, Person, Service, User, db
-from ..services.attendance import (attendance_csv, audit, get_or_create_service, new_access_code,
+from ..services.attendance import (attendance_all_csv, attendance_csv, audit, get_or_create_service, new_access_code,
                                    people_csv, visitor_status)
 from .auth import current_user, owner_required, role_required
 
@@ -73,9 +73,19 @@ def export_attendance():
         d = date.fromisoformat(request.args.get("date", ""))
     except ValueError:
         d = get_or_create_service().service_date
-    svc = Service.query.filter_by(service_date=d).first_or_404()
+    svc = Service.query.filter_by(service_date=d).first()
+    if not svc:
+        flash(f"No attendance was recorded on {d.strftime('%d %B %Y')}.")
+        return redirect(url_for("admin.dashboard"))
     audit(current_user().username, "export_attendance", d.isoformat())
     return _csv_response(attendance_csv(svc), f"attendance-{d.isoformat()}.csv")
+
+
+@bp.get("/export/all-attendance.csv")
+@role_required()
+def export_all_attendance():
+    audit(current_user().username, "export_all_attendance")
+    return _csv_response(attendance_all_csv(), "attendance-all-services.csv")
 
 
 @bp.get("/export/people.csv")
