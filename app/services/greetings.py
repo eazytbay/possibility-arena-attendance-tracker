@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 from flask import current_app
 
 from ..models import MessageLog, Person, db
+from .message_text import HOLIDAYS, birthday_text, holiday_text, new_month_text
 
 log = logging.getLogger(__name__)
 
@@ -58,11 +59,15 @@ def due_messages(day: date) -> list[Due]:
     for p in eligible:
         if _birthday_today(p, day):
             out.append(Due(p, "birthday", day.isoformat(),
-                           _clean(cfg["SMS_TEXT_BIRTHDAY"].format(first_name=_first_name(p)))))
-        if day.day == 1:
+                           _clean(birthday_text(_first_name(p), p.id, day.year, cfg.get("SMS_TEXT_BIRTHDAY") or None))))
+        holiday = HOLIDAYS.get((day.month, day.day))
+        if holiday:
+            kind = holiday[0]
+            out.append(Due(p, kind, day.isoformat(), _clean(holiday_text(kind, _first_name(p), day.year))))
+        elif day.day == 1:
             out.append(Due(p, "new_month", f"{day.year}-{day.month:02d}",
-                           _clean(cfg["SMS_TEXT_NEW_MONTH"].format(first_name=_first_name(p),
-                                                                   month=calendar.month_name[day.month]))))
+                           _clean(new_month_text(_first_name(p), calendar.month_name[day.month],
+                                                 day.year, day.month, cfg.get("SMS_TEXT_NEW_MONTH") or None))))
     return out
 
 

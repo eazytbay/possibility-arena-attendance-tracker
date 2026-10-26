@@ -1,0 +1,9 @@
+# One message per line. {name} = first name, {year} = the year.
+Happy Independence Day, {name}! We thank God for Nigeria. May peace, unity and progress fill our land.
+Happy Independence Day, {name}! God bless Nigeria and keep you and your family safe, joyful and hopeful.
+Happy Independence Day, {name}! Let us give thanks and pray for our nation today. God bless you and Nigeria!
+Happy Independence Day, {name}! May God heal our land and bless our nation with peace and prosperity.
+Happy Independence Day, {name}! Your church family prays for a better Nigeria. Enjoy your day and stay blessed!
+Happy Independence Day, {name}! We thank God for another year of life and nationhood. God bless Nigeria!
+Happy Independence Day, {name}! May the Lord guide our leaders and bless every home in this nation.
+Happy Independence Day, {name}! Proud to be Nigerian and grateful to God. Have a restful and blessed holiday!

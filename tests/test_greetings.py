@@ -149,3 +149,31 @@ def test_every_template_line_is_valid_and_fits():
         assert text.isascii(), t
     assert len(set(BIRTHDAY)) == len(BIRTHDAY) and len(set(NEW_MONTH)) == len(NEW_MONTH)
     assert all("{month}" in t or True for t in NEW_MONTH)
+
+
+def test_holidays_send_their_own_message_instead_of_new_month(app):
+    mk("ada obi", "08011111111")
+    for (y, m, d), word in (((2026, 12, 25), "Christmas"), ((2027, 1, 1), "New Year"), ((2026, 10, 1), "Independence")):
+        prov = FakeProvider()
+        r = run_greetings(prov, now=at(y, m, d))
+        assert r.sent == 1 and word in prov.sent[0][1], (m, d, prov.sent)
+        assert "new month" not in prov.sent[0][1]
+    kinds = {row.kind for row in MessageLog.query.all()}
+    assert kinds == {"christmas", "new_year", "independence"}
+
+
+def test_holiday_message_not_sent_twice_and_birthday_still_separate(app):
+    mk("ada obi", "08011111111", month=12, day=25)
+    prov = FakeProvider()
+    run_greetings(prov, now=at(2026, 12, 25))
+    run_greetings(prov, now=at(2026, 12, 25, 14))
+    assert len(prov.sent) == 2  # Christmas + birthday, once each
+
+
+def test_every_holiday_template_fits_one_page(app):
+    from app.services.message_text import FOOTER, HOLIDAY_TEXTS, MAX_NAME
+    for kind, lines in HOLIDAY_TEXTS.items():
+        assert len(lines) >= 5 and len(set(lines)) == len(lines)
+        for t in lines:
+            text = (t + FOOTER).format(name="W" * MAX_NAME, year=2026)
+            assert "{name}" in t and len(text) <= 160 and text.isascii(), (kind, len(text), t)

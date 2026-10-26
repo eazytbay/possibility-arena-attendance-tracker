@@ -1,0 +1,11 @@
+# One message per line. {name} = first name, {year} = the year.
+Merry Christmas, {name}! Unto us a Saviour is born. May the joy of this season fill your heart and home.
+Merry Christmas, {name}! Glory to God in the highest. May His peace and favour rest on you and your family.
+Merry Christmas, {name}! Jesus is the reason for the season. We love you and celebrate with you today!
+Merry Christmas, {name}! May the Prince of Peace fill your home with joy, laughter and every good thing.
+Merry Christmas, {name}! God gave His best gift in Jesus. May you receive His best gifts this season.
+Merry Christmas, {name}! Emmanuel, God with us. May you feel His love and nearness today and always.
+Merry Christmas, {name}! May the light of Christ shine on you and your household. Enjoy this blessed day!
+Merry Christmas, {name}! Your church family wishes you a joyful Christmas full of love, rest and thanksgiving.
+Merry Christmas, {name}! May the miracle of Christmas bring new hope and fresh testimonies into your life.
+Merry Christmas, {name}! Rejoice, for the Saviour has come. May you and your loved ones be richly blessed.

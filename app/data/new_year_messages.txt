@@ -1,0 +1,11 @@
+# One message per line. {name} = first name, {year} = the new year.
+Happy New Year, {name}! May God crown {year} with His goodness and every path you walk be full of favour.
+Happy New Year, {name}! The Lord who has brought you this far will carry you through {year}. Be blessed!
+Happy New Year, {name}! May {year} be your year of divine helpers, open doors and answered prayers.
+Happy New Year, {name}! We enter {year} with thanksgiving. May God's mercy and peace be with you all year.
+Happy New Year, {name}! May {year} bring you good health, joy in your home and testimonies in your life.
+Happy New Year, {name}! This {year}, God will do new things for you and your family. Welcome to a year of grace!
+Happy New Year, {name}! Your church family prays that {year} is the best year of your life so far.
+Happy New Year, {name}! May the Lord go before you in {year} and make every crooked path straight.
+Happy New Year, {name}! A new year, fresh mercies. May God bless the work of your hands in {year}.
+Happy New Year, {name}! May the joy of the Lord be your strength and His favour your shield all through {year}.
