@@ -1,0 +1,5 @@
+<nav>
+  <strong>{{ church_name }}</strong>
+  <a href="{{ url_for('auth.index') }}">Home</a>
+  <form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost" type="submit">Log out</button></form>
+</nav>

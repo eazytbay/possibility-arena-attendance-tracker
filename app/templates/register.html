@@ -1,0 +1,36 @@
+{% extends "base.html" %}{% block title %}Register{% endblock %}
+{% block body %}
+<h1>Welcome to {{ church_name }}</h1>
+<p class="sub">Register once. It takes about 30 seconds and marks you present today.</p>
+{% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+<form method="post" autocomplete="on">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<div class="hp" aria-hidden="true"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
+<label for="n">Full name</label><input id="n" name="full_name" autocomplete="name" required value="{{ form.get('full_name','') }}">
+<label for="ph">Mobile number</label><input id="ph" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="08012345678" required value="{{ form.get('phone','') }}">
+<label for="c">I am a</label>
+<select id="c" name="category" required>
+{% for c in categories %}<option value="{{ c }}" {{ 'selected' if form.get('category')==c }}>{{ c|capitalize }}</option>{% endfor %}
+</select>
+<div id="dept"><label for="d">Department (if you serve in one)</label>
+<select id="d" name="department"><option value="">None</option>
+{% for d in departments %}<option {{ 'selected' if form.get('department')==d }}>{{ d }}</option>{% endfor %}</select></div>
+<h2>Children you came with</h2>
+<p class="sub">Optional. They are checked in by the children's ministry team.</p>
+<div id="kids"></div>
+<button type="button" class="ghost" id="addkid">Add a child</button>
+<button class="full" type="submit">Register</button>
+</form>
+{% endblock %}
+{% block script %}
+<script>
+const ages={{ age_groups|tojson }};
+function addKid(){const d=document.createElement('div');d.className='child-row';
+d.innerHTML=`<label>Child's name</label><input name="child_name" maxlength="120">
+<label>Age group</label><select name="child_age"><option value="">Choose</option>${ages.map(a=>`<option>${a}</option>`).join('')}</select>
+<label>Allergies or notes</label><input name="child_notes" maxlength="300">`;document.getElementById('kids').appendChild(d)}
+document.getElementById('addkid').onclick=addKid;
+const cat=document.getElementById('c'),dept=document.getElementById('dept');
+function sync(){dept.style.display=cat.value==='visitor'?'none':''}cat.onchange=sync;sync();
+</script>
+{% endblock %}

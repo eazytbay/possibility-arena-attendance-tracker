@@ -1,0 +1,96 @@
+import io
+from datetime import date
+
+import qrcode
+from flask import (Blueprint, Response, current_app, flash, redirect, render_template,
+                   request, send_file, url_for)
+from sqlalchemy import func
+from werkzeug.security import generate_password_hash
+
+from ..models import ROLES, Attendance, Person, Service, User, db
+from ..services.attendance import (attendance_csv, audit, get_or_create_service, people_csv,
+                                   visitor_status)
+from .auth import current_user, role_required
+
+bp = Blueprint("admin", __name__, url_prefix="/admin")
+
+
+def _csv_response(text: str, filename: str) -> Response:
+    return Response("﻿" + text, mimetype="text/csv",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+
+@bp.get("/")
+@role_required()
+def dashboard():
+    svc = get_or_create_service()
+    base = Attendance.query.filter_by(service_id=svc.id)
+    total = base.count()
+    by_cat = dict(db.session.query(Person.category, func.count())
+                  .join(Attendance, Attendance.person_id == Person.id)
+                  .filter(Attendance.service_id == svc.id).group_by(Person.category).all())
+    by_dept = db.session.query(Person.department, func.count()).join(
+        Attendance, Attendance.person_id == Person.id).filter(
+        Attendance.service_id == svc.id, Person.department.isnot(None)).group_by(Person.department).all()
+    visitors = [p for p in (a.person for a in base.all()) if p.category == "visitor"]
+    first_time = sum(1 for p in visitors if visitor_status(p, svc) == "first-time visitor")
+    services = Service.query.order_by(Service.service_date.desc()).limit(20).all()
+    return render_template("admin.html", svc=svc, total=total, by_cat=by_cat, by_dept=sorted(by_dept),
+                           first_time=first_time, services=services,
+                           people_total=Person.query.count(), users=User.query.order_by(User.username).all(),
+                           roles=ROLES)
+
+
+@bp.get("/export/attendance.csv")
+@role_required()
+def export_attendance():
+    try:
+        d = date.fromisoformat(request.args.get("date", ""))
+    except ValueError:
+        d = get_or_create_service().service_date
+    svc = Service.query.filter_by(service_date=d).first_or_404()
+    audit(current_user().username, "export_attendance", d.isoformat())
+    return _csv_response(attendance_csv(svc), f"attendance-{d.isoformat()}.csv")
+
+
+@bp.get("/export/people.csv")
+@role_required()
+def export_people():
+    audit(current_user().username, "export_people")
+    return _csv_response(people_csv(), "people.csv")
+
+
+@bp.get("/qr.png")
+@role_required()
+def qr_png():
+    url = current_app.config["PUBLIC_BASE_URL"].rstrip("/") + url_for("public.register")
+    img = qrcode.make(url, box_size=12, border=2)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return send_file(buf, mimetype="image/png")
+
+
+@bp.get("/poster")
+@role_required()
+def poster():
+    url = current_app.config["PUBLIC_BASE_URL"].rstrip("/") + url_for("public.register")
+    return render_template("poster.html", url=url)
+
+
+@bp.post("/users")
+@role_required()
+def create_user():
+    username = request.form.get("username", "").strip().lower()
+    role = request.form.get("role", "")
+    password = request.form.get("password", "")
+    if not username or role not in ROLES or len(password) < 8:
+        flash("Username, a valid role and a password of at least 8 characters are required.")
+    elif User.query.filter_by(username=username).first():
+        flash("That username already exists.")
+    else:
+        db.session.add(User(username=username, role=role, password_hash=generate_password_hash(password)))
+        db.session.commit()
+        audit(current_user().username, "create_user", f"{username}:{role}")
+        flash(f"Created {role} '{username}'.")
+    return redirect(url_for("admin.dashboard"))

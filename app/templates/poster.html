@@ -1,0 +1,9 @@
+{% extends "base.html" %}{% block title %}Poster{% endblock %}
+{% block body %}
+<div style="text-align:center">
+<h1 style="font-size:2.2rem">Welcome to {{ church_name }}</h1>
+<p>Scan to register and mark your attendance</p>
+<img src="{{ url_for('admin.qr_png') }}" alt="QR code to register" width="320" height="320">
+<p><strong>{{ url }}</strong></p>
+</div>
+{% endblock %}

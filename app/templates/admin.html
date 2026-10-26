@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% block title %}Admin{% endblock %}
+{% block nav %}{% include "_nav.html" %}<a href="{{ url_for('staff.checkin') }}">Check-in</a><a href="{{ url_for('staff.children') }}">Children</a>{% endblock %}
+{% block body %}
+<h1>Today · {{ svc.service_date.strftime('%A %d %B %Y') }}</h1>
+<div class="stats">
+<div class="card stat"><b>{{ total }}</b>present</div>
+<div class="card stat"><b>{{ first_time }}</b>first-time visitors</div>
+<div class="card stat"><b>{{ people_total }}</b>people on record</div></div>
+<h2>By category</h2>
+<table>{% for c,n in by_cat.items() %}<tr><td>{{ c|capitalize }}</td><td>{{ n }}</td></tr>{% else %}<tr><td>No one yet.</td></tr>{% endfor %}</table>
+<h2>By department</h2>
+<table>{% for d,n in by_dept %}<tr><td>{{ d }}</td><td>{{ n }}</td></tr>{% else %}<tr><td>None yet.</td></tr>{% endfor %}</table>
+<h2>Download</h2>
+<p><a class="btn" href="{{ url_for('admin.export_attendance') }}">Today's attendance (CSV)</a>
+<a class="btn ghost" href="{{ url_for('admin.export_people') }}">All people (CSV)</a></p>
+<h2>Earlier services</h2>
+<table>{% for s in services %}<tr><td>{{ s.service_date.strftime('%d %b %Y') }}</td><td><a href="{{ url_for('admin.export_attendance', date=s.service_date.isoformat()) }}">Download CSV</a></td></tr>{% endfor %}</table>
+<h2>Registration QR</h2>
+<p><a class="btn ghost" href="{{ url_for('admin.poster') }}">Open printable poster</a></p>
+<h2>Staff logins</h2>
+<table>{% for u in users %}<tr><td>{{ u.username }}</td><td>{{ u.role }}</td></tr>{% endfor %}</table>
+<form method="post" action="{{ url_for('admin.create_user') }}" class="card">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<label for="nu">New username</label><input id="nu" name="username" required>
+<label for="nr">Role</label><select id="nr" name="role">{% for r in roles %}<option>{{ r }}</option>{% endfor %}</select>
+<label for="np">Password (8+ characters)</label><input id="np" name="password" type="password" minlength="8" required autocomplete="new-password">
+<button class="full" type="submit">Create login</button></form>
+{% endblock %}

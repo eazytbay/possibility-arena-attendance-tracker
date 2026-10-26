@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block title %}Registered{% endblock %}
+{% block body %}
+<h1>{{ 'Welcome back' if welcome_back else 'Welcome' }}, {{ name }}.</h1>
+<div class="note" role="status">You are marked present today.{% if status == 'first-time visitor' %} We are glad you are here for the first time.{% endif %}</div>
+{% if children %}<h2>Your children</h2>
+{% for c in children %}<div class="card">{{ c.full_name }} <span class="pill">{{ c.age_group or 'age not set' }}</span></div>{% endfor %}
+<p>Take them to the children's ministry desk. They will give you a pickup code.</p>{% endif %}
+{% endblock %}

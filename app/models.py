@@ -1,0 +1,72 @@
+from datetime import datetime, timezone
+
+from flask_sqlalchemy import SQLAlchemy
+
+db = SQLAlchemy()
+
+ADULT_CATEGORIES = ("member", "worker", "minister", "visitor")
+CATEGORIES = ADULT_CATEGORIES + ("child",)
+DEPARTMENTS = (
+    "Choir", "Ushers", "Protocol", "Media", "Sanitation", "Welfare",
+    "Intercessors", "Technical", "Counsellors", "Sunday School",
+)
+ROLES = ("admin", "usher", "children")
+AGE_GROUPS = ("0-2", "3-5", "6-9", "10-12", "13-17")
+
+
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class Person(db.Model):
+    __tablename__ = "people"
+    id = db.Column(db.Integer, primary_key=True)
+    full_name = db.Column(db.String(120), nullable=False, index=True)
+    phone = db.Column(db.String(15), unique=True, nullable=True)
+    category = db.Column(db.String(12), nullable=False)
+    department = db.Column(db.String(40), nullable=True)
+    age_group = db.Column(db.String(8), nullable=True)
+    notes = db.Column(db.String(300), nullable=True)
+    guardian_id = db.Column(db.Integer, db.ForeignKey("people.id"), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    guardian = db.relationship("Person", remote_side=[id], backref="children")
+
+
+class Service(db.Model):
+    __tablename__ = "services"
+    id = db.Column(db.Integer, primary_key=True)
+    service_date = db.Column(db.Date, unique=True, nullable=False)
+    name = db.Column(db.String(80), nullable=False)
+
+
+class Attendance(db.Model):
+    __tablename__ = "attendance"
+    __table_args__ = (db.UniqueConstraint("service_id", "person_id", name="uq_service_person"),)
+    id = db.Column(db.Integer, primary_key=True)
+    service_id = db.Column(db.Integer, db.ForeignKey("services.id"), nullable=False, index=True)
+    person_id = db.Column(db.Integer, db.ForeignKey("people.id"), nullable=False, index=True)
+    checked_in_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    checked_in_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    source = db.Column(db.String(10), nullable=False, default="usher")
+    pickup_code = db.Column(db.String(4), nullable=True)
+    released_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    released_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    service = db.relationship("Service")
+    person = db.relationship("Person")
+
+
+class User(db.Model):
+    __tablename__ = "users"
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(40), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(10), nullable=False)
+
+
+class AuditLog(db.Model):
+    __tablename__ = "audit_log"
+    id = db.Column(db.Integer, primary_key=True)
+    at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    actor = db.Column(db.String(40), nullable=False)
+    action = db.Column(db.String(40), nullable=False)
+    detail = db.Column(db.String(300), nullable=True)

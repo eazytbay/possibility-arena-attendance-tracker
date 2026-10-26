@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% block title %}Staff login{% endblock %}
+{% block body %}
+<h1>Staff login</h1><p class="sub">For ushers, children's ministry and admins.</p>
+{% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+<form method="post">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<label for="u">Username</label><input id="u" name="username" autocomplete="username" required autofocus>
+<label for="p">Password</label><input id="p" name="password" type="password" autocomplete="current-password" required>
+<button class="full" type="submit">Log in</button>
+</form>
+{% endblock %}
