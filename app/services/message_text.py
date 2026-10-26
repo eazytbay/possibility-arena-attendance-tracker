@@ -2,27 +2,24 @@
 {name} is the person's first name and {month} the month. The whole text must fit one 160-character SMS page
 for the longest name and month (the tests check this)."""
 import zlib
+from pathlib import Path
 
 MAX_NAME = 14
 FOOTER = " - RCCG Possibility Arena"
 
-BIRTHDAY = [
-    "Happy birthday, {name}! The Lord who has kept you this far will give you many more years of joy, health and favour.",
-    "Happy birthday, {name}! Your church family celebrates you today. May this new age bring you your best testimonies.",
-    "Happy birthday, {name}! May God crown this new year with open doors, good health and answered prayers.",
-    "Happy birthday, {name}! You are loved and prayed for. May this new age be your most fruitful yet.",
-    "Today is your day, {name}! Happy birthday. May God's goodness and mercy follow you all the days of your life.",
-    "Happy birthday, {name}! We thank God for your life. May He give you strength, peace and joy this year.",
-]
+DATA = Path(__file__).resolve().parent.parent / "data"
 
-NEW_MONTH = [
-    "Happy new month, {name}! This {month} the Lord will open doors no man can shut, and your testimony will be loud.",
-    "Happy new month, {name}! May {month} bring answers to your prayers and joy to your home. We love you!",
-    "Happy new month, {name}! The Lord who brought you into {month} will lead you through it with favour on every side.",
-    "Happy new month, {name}! Our God is faithful. May {month} be your month of peace, progress and divine help.",
-    "{name}, happy new month from your church family! May {month} bring you rest, strength and fresh testimonies.",
-    "Happy new month, {name}! May God's mercy follow you every day of {month}. Stay blessed and see you on Sunday!",
-]
+
+def _load(filename: str) -> list[str]:
+    lines = [ln.strip() for ln in (DATA / filename).read_text(encoding="utf-8").splitlines()]
+    lines = [ln for ln in lines if ln and not ln.startswith("#")]
+    if not lines:
+        raise RuntimeError(f"{filename} has no messages")
+    return lines
+
+
+BIRTHDAY = _load("birthday_messages.txt")
+NEW_MONTH = _load("new_month_messages.txt")
 
 
 def short_name(name: str) -> str:

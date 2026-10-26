@@ -1,0 +1,31 @@
+# One message per line. Use {name} for the first name and {month} for the month name. Lines starting with # are ignored.
+Happy new month, {name}! This {month} the Lord will open doors no man can shut, and your testimony will be loud.
+Happy new month, {name}! May {month} bring answers to your prayers and joy to your home. We love you!
+Happy new month, {name}! The Lord who brought you into {month} will lead you through it with favour on every side.
+Happy new month, {name}! Our God is faithful. May {month} be your month of peace, progress and divine help.
+{name}, happy new month from your church family! May {month} bring you rest, strength and fresh testimonies.
+Happy new month, {name}! May God's mercy follow you every day of {month}. Stay blessed and see you on Sunday!
+Happy new month, {name}! Enter {month} with thanksgiving. The Lord has good things in store for you.
+Happy new month, {name}! May {month} be a month of divine surprises and open heavens over your life.
+Happy new month, {name}! Every prayer you prayed last month will find its answer in {month}. Be blessed!
+Happy new month, {name}! God's grace is sufficient for you in {month}. Walk in faith and favour.
+Happy new month, {name}! May the Lord prosper the work of your hands and guard your home this {month}.
+Happy new month, {name}! Let this {month} be a season of joy, health and breakthrough for you and your family.
+Happy new month, {name}! A new month, new mercies. May God lift you higher in {month}.
+Happy new month, {name}! We bless God for bringing you to {month}. May His peace fill your heart.
+Happy new month, {name}! May God grant you wisdom, strength and every good thing you need this {month}.
+Happy new month, {name}! Your church family is praying for you. May {month} be your best month yet.
+Happy new month, {name}! May doors of opportunity open to you this {month} and no good thing be withheld.
+Happy new month, {name}! May God turn your mourning to dancing and your lack to abundance in {month}.
+Happy new month, {name}! The Lord goes before you in {month}. Fear not, for He is with you.
+Happy new month, {name}! May {month} bring you closer to God and closer to every promise He made to you.
+Happy new month, {name}! Let us begin {month} with prayer and praise. God bless you and your household!
+Happy new month, {name}! May your joy be full and your needs be met in {month}. Shalom!
+Happy new month, {name}! God has kept you to see {month}, so your best is yet to come. Rejoice!
+Happy new month, {name}! May God's light guide you and His favour surround you all through {month}.
+Happy new month, {name}! May this {month} bring you good news, good health and good people. God bless you!
+Happy new month, {name}! Step into {month} with faith. God is with you and He will see you through.
+Happy new month, {name}! Declare it: this {month} I will live in victory. The Lord is on your side!
+Happy new month, {name}! May {month} be filled with testimonies in your life, your home and your work.
+Happy new month, {name}! We are grateful for you. May God bless you richly in {month} and always.
+Happy new month, {name}! Surely goodness and mercy will follow you every day of {month}. Stay blessed!

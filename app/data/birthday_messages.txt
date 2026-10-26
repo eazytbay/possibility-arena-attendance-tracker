@@ -1,0 +1,31 @@
+# One message per line. Use {name} for the person's first name. Lines starting with # are ignored.
+Happy birthday, {name}! The Lord who has kept you this far will give you many more years of joy, health and favour.
+Happy birthday, {name}! Your church family celebrates you today. May this new age bring you your best testimonies.
+Happy birthday, {name}! May God crown this new year with open doors, good health and answered prayers.
+Happy birthday, {name}! You are loved and prayed for. May this new age be your most fruitful yet.
+Today is your day, {name}! Happy birthday. May God's goodness and mercy follow you all the days of your life.
+Happy birthday, {name}! We thank God for your life. May He give you strength, peace and joy this year.
+Happy birthday, {name}! As you add a year, God will add wisdom, favour and divine increase to your life.
+Happy birthday, {name}! May every good thing God has planned for you come to pass this year. We celebrate you!
+Happy birthday, {name}! God has been faithful to you and He will not stop now. Enjoy your special day!
+Happy birthday, {name}! May the joy of the Lord be your strength all through this new year.
+Happy birthday, {name}! The best of your life is still ahead. May this year bring you new levels of grace.
+Happy birthday, {name}! May God surprise you with goodness today and every day of your new year.
+Happy birthday, {name}! Thank you for being part of our family. May God reward you and lift you higher.
+Happy birthday, {name}! Another year of God's mercy! May your cup overflow with peace and blessings.
+Happy birthday, {name}! May God satisfy you with long life and fill your home with laughter this year.
+Happy birthday, {name}! We are glad God made you. May this year be your season of answered prayers.
+Happy birthday, {name}! May your steps be ordered by the Lord and your path shine brighter every day.
+Happy birthday, {name}! May God cover you with His wings, bless your hands and bring you testimonies.
+Happy birthday, {name}! Celebrate big today, for the Lord has done great things for you. Stay blessed!
+Happy birthday, {name}! May this new year be full of God's love, good health and unexpected favour.
+Happy birthday, {name}! Wishing you a wonderful day and a year of progress, peace and divine protection.
+Happy birthday, {name}! The Lord is your shepherd and you will lack nothing this year. Be blessed!
+Happy birthday, {name}! May God turn every waiting into celebration this year. We love you!
+Happy birthday, {name}! Your life is a blessing to us. May God bless you in return, beyond what you ask.
+Happy birthday, {name}! May God's favour go before you and His peace guard your heart all year long.
+Happy birthday, {name}! Rejoice today, for this is the day the Lord has made. Have a beautiful birthday!
+Happy birthday, {name}! May God multiply your joy, strengthen your faith and bless your family this year.
+Happy birthday, {name}! Another page, another chapter of God's goodness. May it be your best one yet.
+Happy birthday, {name}! We pray God gives you everything good this year and keeps you in His love.
+Happy birthday, {name}! Heaven celebrates you today and so do we. May your year be filled with grace.

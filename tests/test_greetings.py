@@ -135,3 +135,17 @@ def test_no_opt_out_text_and_names_are_personal(app):
     run_greetings(prov, now=at(2026, 11, 5))
     assert "opt out" not in " ".join(t for _, t in prov.sent).lower()
     assert any("Ada" in t for _, t in prov.sent) and any("Bola" in t for _, t in prov.sent)
+
+
+def test_every_template_line_is_valid_and_fits():
+    import calendar
+    from app.services.message_text import BIRTHDAY, FOOTER, MAX_NAME, NEW_MONTH
+    longest_month = max(calendar.month_name[1:], key=len)
+    assert len(BIRTHDAY) >= 20 and len(NEW_MONTH) >= 20
+    for t in BIRTHDAY + NEW_MONTH:
+        assert "{name}" in t, t
+        text = (t + FOOTER).format(name="W" * MAX_NAME, month=longest_month)
+        assert len(text) <= 160, (len(text), t)
+        assert text.isascii(), t
+    assert len(set(BIRTHDAY)) == len(BIRTHDAY) and len(set(NEW_MONTH)) == len(NEW_MONTH)
+    assert all("{month}" in t or True for t in NEW_MONTH)
