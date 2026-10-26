@@ -1,7 +1,9 @@
 import click
 from werkzeug.security import generate_password_hash
 
-from .models import ROLES, User, db
+from datetime import date
+
+from .models import ROLES, Person, User, db
 
 
 def register_cli(app):
@@ -58,3 +60,44 @@ def register_cli(app):
         db.session.delete(user)
         db.session.commit()
         click.echo(f"Deleted '{user.username}'")
+
+    @app.cli.command("send-greetings")
+    @click.option("--dry-run", is_flag=True, help="Print what would be sent. Sends nothing.")
+    @click.option("--date", "on_date", default=None, help="Pretend today is YYYY-MM-DD (dry run only).")
+    def send_greetings(dry_run, on_date):
+        """Send today's birthday and new-month SMS greetings (safe to run hourly)."""
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        from .services.greetings import run_greetings
+        from .services.sms import provider_from_config
+
+        provider = provider_from_config(app.config)
+        now = None
+        if on_date:
+            if not dry_run:
+                raise click.ClickException("--date only works together with --dry-run")
+            now = datetime.combine(date.fromisoformat(on_date), datetime.min.time(),
+                                   tzinfo=ZoneInfo(app.config["TIMEZONE"]))
+        if provider is None and not dry_run:
+            click.echo("SMS is off or not configured (SMS_ENABLED, SMS_API_TOKEN, SMS_SENDER_ID). Nothing sent.")
+            return
+        r = run_greetings(provider, now=now, dry_run=dry_run)
+        for line in r.dry_lines:
+            click.echo(line)
+        if r.outside_hours:
+            click.echo("Outside 08:00-20:00 Lagos time. Nothing sent.")
+        click.echo(f"sent={r.sent} failed={r.failed} already_done={r.skipped_done}"
+                   + (f" STOPPED: {r.stopped_early}" if r.stopped_early else ""))
+
+    @app.cli.command("sms-optout")
+    @click.argument("phone")
+    def sms_optout(phone):
+        """Stop greetings for a phone number (08012345678)."""
+        from .services.phone import normalize_phone
+        p = Person.query.filter_by(phone=normalize_phone(phone)).first()
+        if not p:
+            raise click.ClickException("No one on record with that number")
+        p.sms_opt_in = False
+        db.session.commit()
+        click.echo(f"Greetings stopped for {p.full_name}")

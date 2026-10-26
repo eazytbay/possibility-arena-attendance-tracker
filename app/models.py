@@ -34,6 +34,7 @@ class Person(db.Model):
     notes = db.Column(db.String(300), nullable=True)
     birth_month = db.Column(db.SmallInteger, nullable=True)  # day and month only, never the year
     birth_day = db.Column(db.SmallInteger, nullable=True)
+    sms_opt_in = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
     has_photo = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
     photo = db.deferred(db.Column(db.LargeBinary, nullable=True))  # small JPEG thumbnail, adults only
     guardian_id = db.Column(db.Integer, db.ForeignKey("people.id"), nullable=True)
@@ -82,3 +83,20 @@ class AuditLog(db.Model):
     actor = db.Column(db.String(40), nullable=False)
     action = db.Column(db.String(40), nullable=False)
     detail = db.Column(db.String(300), nullable=True)
+
+
+class MessageLog(db.Model):
+    """One row per greeting per person per day/month. The unique key makes sending safe to repeat."""
+    __tablename__ = "message_log"
+    __table_args__ = (db.UniqueConstraint("person_id", "kind", "period_key", name="uq_message_once"),)
+    id = db.Column(db.Integer, primary_key=True)
+    person_id = db.Column(db.Integer, db.ForeignKey("people.id"), nullable=False, index=True)
+    kind = db.Column(db.String(12), nullable=False)          # birthday | new_month
+    period_key = db.Column(db.String(10), nullable=False)    # 2026-11-05 or 2026-11
+    status = db.Column(db.String(8), nullable=False)         # sent | failed
+    attempts = db.Column(db.SmallInteger, nullable=False, default=0)
+    provider_id = db.Column(db.String(64), nullable=True)
+    error = db.Column(db.String(200), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+    person = db.relationship("Person")
