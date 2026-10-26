@@ -162,3 +162,16 @@ def test_admin_can_rotate_code_and_close(client):
     client.post("/admin/service/toggle")
     from app.services.attendance import get_or_create_service
     assert get_or_create_service().registration_open is False
+
+
+def test_media_role_sees_code_only(client, app):
+    from werkzeug.security import generate_password_hash
+    from app.models import User
+    db.session.add(User(username="media", role="media", password_hash=generate_password_hash("password123")))
+    db.session.commit()
+    login(client, "media")
+    page = client.get("/display").data.decode()
+    assert code() in page
+    assert client.get("/admin/qr.png").status_code == 200
+    for url in ("/admin/", "/admin/export/people.csv", "/checkin", "/children"):
+        assert client.get(url).status_code == 403, url

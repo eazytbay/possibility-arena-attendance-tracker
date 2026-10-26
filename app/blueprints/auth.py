@@ -32,7 +32,7 @@ def role_required(*roles):
 
 
 def landing_for(user) -> str:
-    return url_for({"admin": "admin.dashboard", "usher": "staff.checkin", "children": "staff.children"}[user.role])
+    return url_for({"admin": "admin.dashboard", "usher": "staff.checkin", "children": "staff.children", "media": "staff.display"}[user.role])
 
 
 @bp.get("/")

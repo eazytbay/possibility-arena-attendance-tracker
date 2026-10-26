@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% block title %}Display{% endblock %}
+{% block nav %}{% include "_nav.html" %}{% endblock %}
+{% block mainclass %}wide{% endblock %}
+{% block body %}
+<meta http-equiv="refresh" content="30">
+<div class="sheet" style="text-align:center;margin-top:24px">
+<h1 style="font-size:2rem;margin:.1em 0">Mark your attendance</h1>
+<p class="sub" style="font-size:1.1rem">1. Scan the QR code with your phone camera<br>2. Enter today's service code<br>3. Enter your phone number</p>
+{% if svc.registration_open %}
+<img src="{{ url_for('admin.qr_png') }}" alt="QR code to register" width="300" height="300" style="max-width:100%;height:auto">
+<div class="sub" style="margin:10px 0 0">Today's service code</div>
+<div class="code" style="font-size:3.4rem">{{ svc.access_code }}</div>
+<p><strong>{{ url }}</strong></p>
+{% else %}
+<div class="error" style="font-size:1.2rem">Attendance is closed.</div>
+{% endif %}
+</div>{% endblock %}

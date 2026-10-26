@@ -84,7 +84,7 @@ def export_people():
 
 
 @bp.get("/qr.png")
-@role_required()
+@role_required("media")
 def qr_png():
     url = current_app.config["PUBLIC_BASE_URL"].rstrip("/") + url_for("public.register")
     img = qrcode.make(url, box_size=12, border=2)

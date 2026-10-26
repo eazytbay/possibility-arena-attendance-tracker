@@ -1,6 +1,7 @@
 <nav class="links" aria-label="Main">
   {% if me and me.role in ('admin','usher') %}<a href="{{ url_for('staff.checkin') }}">Check-in</a>{% endif %}
   {% if me and me.role in ('admin','children') %}<a href="{{ url_for('staff.children') }}">Children</a>{% endif %}
+  {% if me and me.role in ('admin','media') %}<a href="{{ url_for('staff.display') }}">Display</a>{% endif %}
   {% if me and me.role == 'admin' %}<a href="{{ url_for('admin.dashboard') }}">Admin</a>{% endif %}
   <form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit">Log out</button></form>
 </nav>

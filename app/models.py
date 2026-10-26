@@ -10,7 +10,7 @@ DEPARTMENTS = (
     "Choir", "Ushers", "Protocol", "Media", "Sanitation", "Welfare",
     "Intercessors", "Technical", "Counsellors", "Sunday School",
 )
-ROLES = ("admin", "usher", "children")
+ROLES = ("admin", "usher", "children", "media")
 AGE_GROUPS = ("0-2", "3-5", "6-9", "10-12", "13-17")
 
 

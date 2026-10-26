@@ -14,6 +14,14 @@ from .auth import current_user, role_required
 bp = Blueprint("staff", __name__)
 
 
+@bp.get("/display")
+@role_required("media")
+def display():
+    svc = get_or_create_service()
+    url = current_app.config["PUBLIC_BASE_URL"].rstrip("/") + "/register"
+    return render_template("display.html", svc=svc, url=url)
+
+
 @bp.get("/checkin")
 @role_required("usher")
 def checkin():
