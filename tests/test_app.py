@@ -217,3 +217,48 @@ def test_login_with_email_and_no_user_creation_route(client):
     assert client.post("/admin/users", data={"username": "x", "role": "admin", "password": "password123"}).status_code in (404, 405)
     page = client.get("/admin/").data.decode()
     assert "Staff logins" not in page and "Register a person" in page
+
+
+def _mk(role, name):
+    from werkzeug.security import generate_password_hash
+    from app.models import User
+    db.session.add(User(username=name, role=role, password_hash=generate_password_hash("password123")))
+    db.session.commit()
+
+
+def test_only_owner_can_manage_team(client):
+    _mk("owner", "boss")
+    login(client, "admin")                       # a normal admin
+    assert client.get("/admin/team").status_code == 403
+    assert client.post("/admin/team", data={"username": "sneaky", "role": "admin", "password": "password123"}).status_code == 403
+    client.post("/logout")
+    login(client, "boss")
+    assert client.get("/admin/team").status_code == 200
+    client.post("/admin/team", data={"username": "newmedia", "email": "n@x.org", "role": "media", "password": "password123"})
+    from app.models import User
+    assert User.query.filter_by(username="newmedia").one().role == "media"
+
+
+def test_owner_cannot_create_second_owner_or_be_deleted(client):
+    from app.models import User
+    _mk("owner", "boss")
+    login(client, "boss")
+    client.post("/admin/team", data={"username": "rival", "role": "owner", "password": "password123"})
+    assert User.query.filter_by(username="rival").count() == 0
+    boss = User.query.filter_by(username="boss").one()
+    client.post(f"/admin/team/{boss.id}/delete")
+    assert User.query.filter_by(username="boss").count() == 1
+
+
+def test_demo_seed_and_isolation(tmp_path):
+    from app import create_app
+    from app.demo import reset_demo
+    app = create_app({"TESTING": True, "SECRET_KEY": "t", "WTF_CSRF_ENABLED": False, "DEMO_MODE": False,
+                      "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path}/d.db", "RATELIMIT_ENABLED": False})
+    with app.app_context():
+        reset_demo()
+        assert Person.query.count() > 40 and Attendance.query.count() > 50
+        c = app.test_client()
+        r = c.post("/login", data={"username": "demo-owner", "password": "demo-password"})
+        assert r.status_code == 302
+        assert c.get("/admin/export/attendance.csv").status_code == 200

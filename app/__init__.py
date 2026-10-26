@@ -1,6 +1,6 @@
 import logging
 
-from flask import Flask
+from flask import Flask, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_migrate import Migrate
@@ -37,16 +37,23 @@ def create_app(overrides: dict | None = None) -> Flask:
     from .cli import register_cli
     register_cli(app)
 
+    if app.config["DEMO_MODE"]:
+        from .demo import install_demo
+        install_demo(app)
+
     @app.after_request
     def security_headers(resp):
         resp.headers["X-Content-Type-Options"] = "nosniff"
         resp.headers["X-Frame-Options"] = "DENY"
         resp.headers["Referrer-Policy"] = "same-origin"
+        if request.is_secure:
+            resp.headers["Strict-Transport-Security"] = "max-age=31536000"
         return resp
 
     @app.context_processor
     def inject_globals():
         from .blueprints.auth import current_user
-        return {"church_name": app.config["CHURCH_NAME"], "me": current_user()}
+        return {"church_name": app.config["CHURCH_NAME"], "me": current_user(),
+                "demo_mode": app.config["DEMO_MODE"]}
 
     return app

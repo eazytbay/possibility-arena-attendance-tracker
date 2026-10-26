@@ -1,20 +1,13 @@
 import os
 
 
-def _db_url() -> str:
-    url = os.environ.get("DATABASE_URL", "sqlite:///dev.db")
-    # Newer SQLAlchemy may default to psycopg3; this project installs psycopg2.
-    if url.startswith("postgresql://"):
-        url = "postgresql+psycopg2://" + url[len("postgresql://"):]
-    return url
-
-
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "")
-    SQLALCHEMY_DATABASE_URI = _db_url()
+    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", "sqlite:///dev.db")
     CHURCH_NAME = os.environ.get("CHURCH_NAME", "Our Church")
     PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://localhost:8000")
     TIMEZONE = "Africa/Lagos"
+    DEMO_MODE = os.environ.get("DEMO_MODE", "false").lower() == "true"
     WTF_CSRF_TIME_LIMIT = None
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"

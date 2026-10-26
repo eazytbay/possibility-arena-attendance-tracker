@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% block title %}Team{% endblock %}
+{% block nav %}{% include "_nav.html" %}{% endblock %}
+{% block mainclass %}wide{% endblock %}
+{% block hero %}<section class="hero left"><div class="in"><h1>Team logins</h1><p>Only the owner can see this page</p></div></section>{% endblock %}
+{% block body %}<div class="sheet">
+<table>
+{% for u in users %}<tr><td><strong>{{ u.username }}</strong><br><span class="sub">{{ u.email or 'no email' }}</span></td>
+<td><span class="pill {{ 'g' if u.role == 'owner' else '' }}">{{ u.role }}</span></td></tr>
+{% if u.role != 'owner' %}<tr><td colspan="2" style="text-align:left">
+<form method="post" action="{{ url_for('admin.team_password', uid=u.id) }}" style="display:inline-flex;gap:8px;flex-wrap:wrap">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input name="password" type="password" minlength="8" placeholder="New password" style="width:180px;height:42px" autocomplete="new-password">
+<button class="ghost" style="height:42px" type="submit">Change password</button></form>
+<form method="post" action="{{ url_for('admin.team_delete', uid=u.id) }}" style="display:inline" onsubmit="return confirm('Remove this login?')">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost" style="height:42px;color:#9c2227;border-color:#9c2227" type="submit">Remove</button></form>
+</td></tr>{% endif %}
+{% endfor %}
+</table>
+<h2>Add a login</h2>
+<form method="post" class="card">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<label for="tu" style="margin-top:0">Username</label><input id="tu" name="username" required>
+<label for="te">Email (optional, can also be used to log in)</label><input id="te" name="email" type="email">
+<label for="tr">Role</label><select id="tr" name="role">{% for r in roles %}<option>{{ r }}</option>{% endfor %}</select>
+<label for="tp">Password (8+ characters)</label><input id="tp" name="password" type="password" minlength="8" required autocomplete="new-password">
+<button class="full" type="submit">Create login</button></form>
+<p class="sub">Roles: <strong>admin</strong> sees everything except this page. <strong>media</strong> registers people and checks them in. <strong>usher</strong> does the same. <strong>children</strong> handles children only.</p>
+</div>{% endblock %}

@@ -10,6 +10,7 @@
 <input type="hidden" name="step" value="{{ step }}">
 <div class="hp" aria-hidden="true"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
 {% if step == 'attend' %}
+{% if demo_code %}<div class="note">Demo: today's service code is <strong>{{ demo_code }}</strong>. In the real app, the media team shows it on the church screen. You can enter any phone number to try registering a fake person.</div>{% endif %}
 <label for="code" style="margin-top:0">Today's service code</label>
 <input id="code" name="code" autocapitalize="characters" autocomplete="off" maxlength="8" required placeholder="Ask an usher" value="{{ form.get('code','') }}">
 <label for="ph">Mobile number</label>

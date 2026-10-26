@@ -14,7 +14,8 @@
 </div></div>
 <div class="btn-row" style="margin-bottom:14px"><a class="btn" href="{{ url_for('staff.enrol') }}">Register a person</a>
 <a class="btn ghost" href="{{ url_for('staff.checkin') }}">Check-in (search)</a>
-<a class="btn ghost" href="{{ url_for('staff.display') }}">Screen display</a></div>
+<a class="btn ghost" href="{{ url_for('staff.display') }}">Screen display</a>
+{% if me and me.role == 'owner' %}<a class="btn ghost" href="{{ url_for('admin.team') }}">Team logins</a>{% endif %}</div>
 <div class="stats">
 <div class="stat"><b>{{ total }}</b><span>present</span></div>
 <div class="stat"><b>{{ first_time }}</b><span>first-time visitors</span></div>

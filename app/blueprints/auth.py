@@ -25,15 +25,28 @@ def role_required(*roles):
             user = current_user()
             if not user:
                 return redirect(url_for("auth.login", next=request.path))
-            if user.role != "admin" and user.role not in roles:
+            if user.role not in ("owner", "admin") and user.role not in roles:
                 abort(403)
             return fn(*a, **kw)
         return wrapper
     return deco
 
 
+def owner_required(fn):
+    """Only the owner may manage logins."""
+    @wraps(fn)
+    def wrapper(*a, **kw):
+        user = current_user()
+        if not user:
+            return redirect(url_for("auth.login", next=request.path))
+        if user.role != "owner":
+            abort(403)
+        return fn(*a, **kw)
+    return wrapper
+
+
 def landing_for(user) -> str:
-    return url_for({"admin": "admin.dashboard", "usher": "staff.enrol", "children": "staff.children", "media": "staff.enrol"}[user.role])
+    return url_for({"owner": "admin.dashboard", "admin": "admin.dashboard", "usher": "staff.enrol", "children": "staff.children", "media": "staff.enrol"}[user.role])
 
 
 @bp.get("/")

@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
 <body>
+{% if demo_mode %}<div class="demo-banner">Demo with sample data only. Everything resets daily. Real church data is never shown here.</div>{% endif %}
 <header class="bar">
   <a class="brand" href="{{ url_for('auth.index') }}">
     <img class="seal" src="{{ url_for('static', filename='rccg-seal.png') }}" alt="" width="42" height="42">

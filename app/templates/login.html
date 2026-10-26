@@ -9,4 +9,9 @@
 <label for="u" style="margin-top:0">Email or username</label><input id="u" name="username" autocomplete="username" required autofocus>
 <label for="p">Password</label><input id="p" name="password" type="password" autocomplete="current-password" required>
 <button class="full" type="submit">Log in</button>
-</form></div>{% endblock %}
+</form>
+{% if demo_mode %}<div class="card demo-box"><strong>Try the demo</strong><br>
+Owner (everything): <code>demo-owner</code> / <code>demo-password</code><br>
+Media (register and check in): <code>demo-media</code> / <code>demo-password</code><br>
+Children's ministry: <code>demo-children</code> / <code>demo-password</code></div>{% endif %}
+</div>{% endblock %}

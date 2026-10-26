@@ -53,8 +53,8 @@ def register_cli(app):
         user = User.query.filter(db.or_(User.username == ident, User.email == ident)).first()
         if not user:
             raise click.ClickException("No such user")
-        if user.role == "admin" and User.query.filter_by(role="admin").count() == 1:
-            raise click.ClickException("Cannot delete the only admin")
+        if user.role == "owner":
+            raise click.ClickException("The owner login cannot be deleted")
         db.session.delete(user)
         db.session.commit()
         click.echo(f"Deleted '{user.username}'")

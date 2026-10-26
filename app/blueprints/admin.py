@@ -6,10 +6,14 @@ from flask import (Blueprint, Response, current_app, flash, redirect, render_tem
                    request, send_file, url_for)
 from sqlalchemy import func
 
-from ..models import Attendance, Person, Service, db
+import re
+
+from werkzeug.security import generate_password_hash
+
+from ..models import ROLES, Attendance, Person, Service, User, db
 from ..services.attendance import (attendance_csv, audit, get_or_create_service, new_access_code,
                                    people_csv, visitor_status)
-from .auth import current_user, role_required
+from .auth import current_user, owner_required, role_required
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -97,3 +101,69 @@ def qr_png():
 def poster():
     url = current_app.config["PUBLIC_BASE_URL"].rstrip("/") + url_for("public.register")
     return render_template("poster.html", url=url)
+
+
+_USERNAME = re.compile(r"^[a-z0-9._-]{3,40}$")
+_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+@bp.get("/team")
+@owner_required
+def team():
+    return render_template("team.html", users=User.query.order_by(User.role, User.username).all(),
+                           roles=[r for r in ROLES if r != "owner"], me=current_user())
+
+
+@bp.post("/team")
+@owner_required
+def team_add():
+    username = request.form.get("username", "").strip().lower()
+    email = request.form.get("email", "").strip().lower() or None
+    role = request.form.get("role", "")
+    password = request.form.get("password", "")
+    if not _USERNAME.match(username):
+        flash("Username: 3 to 40 letters, numbers, dots, dashes or underscores.")
+    elif email and (len(email) > 120 or not _EMAIL.match(email)):
+        flash("That email address does not look right.")
+    elif role not in ROLES or role == "owner":
+        flash("Choose a valid role. There can only be one owner.")
+    elif len(password) < 8:
+        flash("The password needs at least 8 characters.")
+    elif User.query.filter(db.or_(User.username == username, User.email == (email or username))).first():
+        flash("That username or email already exists.")
+    else:
+        db.session.add(User(username=username, email=email, role=role,
+                            password_hash=generate_password_hash(password)))
+        db.session.commit()
+        audit(current_user().username, "team_add", f"{username}:{role}")
+        flash(f"Created {role} login '{username}'.")
+    return redirect(url_for("admin.team"))
+
+
+@bp.post("/team/<int:uid>/delete")
+@owner_required
+def team_delete(uid):
+    user = db.get_or_404(User, uid)
+    if user.role == "owner":
+        flash("The owner login cannot be removed here.")
+    else:
+        db.session.delete(user)
+        db.session.commit()
+        audit(current_user().username, "team_delete", user.username)
+        flash(f"Removed '{user.username}'.")
+    return redirect(url_for("admin.team"))
+
+
+@bp.post("/team/<int:uid>/password")
+@owner_required
+def team_password(uid):
+    user = db.get_or_404(User, uid)
+    password = request.form.get("password", "")
+    if len(password) < 8:
+        flash("The password needs at least 8 characters.")
+    else:
+        user.password_hash = generate_password_hash(password)
+        db.session.commit()
+        audit(current_user().username, "team_password", user.username)
+        flash(f"Password changed for '{user.username}'.")
+    return redirect(url_for("admin.team"))

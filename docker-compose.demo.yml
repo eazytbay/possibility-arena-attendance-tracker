@@ -1,0 +1,20 @@
+# Public demo: fake data only, separate from the real app. Start with:
+#   docker compose -f docker-compose.demo.yml -p pa-demo up -d --build
+services:
+  demo:
+    build: .
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: ${DEMO_SECRET_KEY}
+      DATABASE_URL: sqlite:////data/demo.db
+      DEMO_MODE: "true"
+      CHURCH_NAME: Redeemed Christian Church of God Possibility Arena (demo)
+      PUBLIC_BASE_URL: https://attendance-demo.enobsai.com
+      SESSION_COOKIE_SECURE: "true"
+      WEB_CONCURRENCY: "1"
+    volumes:
+      - demo-data:/data
+    ports:
+      - "127.0.0.1:8301:8000"
+volumes:
+  demo-data:
