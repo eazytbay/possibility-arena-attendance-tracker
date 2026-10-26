@@ -1,6 +1,7 @@
 from functools import wraps
 
 from flask import Blueprint, abort, redirect, render_template, request, session, url_for
+from sqlalchemy import or_
 from werkzeug.security import check_password_hash
 
 from .. import limiter
@@ -46,7 +47,8 @@ def index():
 def login():
     error = None
     if request.method == "POST":
-        user = User.query.filter_by(username=request.form.get("username", "").strip().lower()).first()
+        ident = request.form.get("username", "").strip().lower()
+        user = User.query.filter(or_(User.username == ident, User.email == ident)).first() if ident else None
         ok = check_password_hash(user.password_hash if user else _DUMMY_HASH, request.form.get("password", ""))
         if user and ok:
             session.clear()

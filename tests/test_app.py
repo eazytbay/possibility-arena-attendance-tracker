@@ -203,3 +203,17 @@ def test_closed_public_page_hides_form(client):
     from app.services.attendance import get_or_create_service
     svc = get_or_create_service(); svc.registration_open = False; db.session.commit()
     assert b"welcome team" in client.get("/register").data
+
+
+def test_login_with_email_and_no_user_creation_route(client):
+    from werkzeug.security import generate_password_hash
+    from app.models import User
+    db.session.add(User(username="grace", email="grace@example.com", role="media",
+                        password_hash=generate_password_hash("password123")))
+    db.session.commit()
+    r = client.post("/login", data={"username": "Grace@Example.com", "password": "password123"})
+    assert r.status_code == 302 and r.headers["Location"].endswith("/enrol")
+    login(client, "admin")
+    assert client.post("/admin/users", data={"username": "x", "role": "admin", "password": "password123"}).status_code in (404, 405)
+    page = client.get("/admin/").data.decode()
+    assert "Staff logins" not in page and "Register a person" in page

@@ -5,9 +5,8 @@ import qrcode
 from flask import (Blueprint, Response, current_app, flash, redirect, render_template,
                    request, send_file, url_for)
 from sqlalchemy import func
-from werkzeug.security import generate_password_hash
 
-from ..models import ROLES, Attendance, Person, Service, User, db
+from ..models import Attendance, Person, Service, db
 from ..services.attendance import (attendance_csv, audit, get_or_create_service, new_access_code,
                                    people_csv, visitor_status)
 from .auth import current_user, role_required
@@ -37,8 +36,7 @@ def dashboard():
     services = Service.query.order_by(Service.service_date.desc()).limit(20).all()
     return render_template("admin.html", svc=svc, total=total, by_cat=by_cat, by_dept=sorted(by_dept),
                            first_time=first_time, services=services,
-                           people_total=Person.query.count(), users=User.query.order_by(User.username).all(),
-                           roles=ROLES)
+                           people_total=Person.query.count())
 
 
 @bp.post("/service/code")
@@ -99,21 +97,3 @@ def qr_png():
 def poster():
     url = current_app.config["PUBLIC_BASE_URL"].rstrip("/") + url_for("public.register")
     return render_template("poster.html", url=url)
-
-
-@bp.post("/users")
-@role_required()
-def create_user():
-    username = request.form.get("username", "").strip().lower()
-    role = request.form.get("role", "")
-    password = request.form.get("password", "")
-    if not username or role not in ROLES or len(password) < 8:
-        flash("Username, a valid role and a password of at least 8 characters are required.")
-    elif User.query.filter_by(username=username).first():
-        flash("That username already exists.")
-    else:
-        db.session.add(User(username=username, role=role, password_hash=generate_password_hash(password)))
-        db.session.commit()
-        audit(current_user().username, "create_user", f"{username}:{role}")
-        flash(f"Created {role} '{username}'.")
-    return redirect(url_for("admin.dashboard"))
