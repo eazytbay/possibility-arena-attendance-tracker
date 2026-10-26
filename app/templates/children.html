@@ -1,25 +1,24 @@
 {% extends "base.html" %}{% block title %}Children{% endblock %}
 {% block nav %}{% include "_nav.html" %}{% endblock %}
-{% block body %}
-<h1>Children's ministry</h1>
-<p class="sub">{{ service.service_date.strftime('%A %d %B %Y') }}. Parents who are present are listed first.</p>
+{% block hero %}<section class="hero left"><div class="in">
+<h1>Children's ministry</h1><p>{{ service.service_date.strftime('%A %d %B %Y') }} · parents who are present are listed first</p></div></section>{% endblock %}
+{% block body %}<div class="sheet">
 <h2>Release a child</h2>
-<div class="card"><label for="rc">Pickup code from the guardian</label>
-<input id="rc" inputmode="numeric" maxlength="4" autocomplete="off">
-<button class="full" id="rel" type="button">Release child</button><div id="rmsg" role="status"></div></div>
+<div class="card"><label for="rc" style="margin-top:0">Pickup code from the guardian</label>
+<input id="rc" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="4 digits">
+<button class="full" id="rel" type="button">Release child</button><div id="rmsg" role="status" style="margin-top:10px"></div></div>
 <h2>Children</h2>
 <input id="f" type="search" placeholder="Filter by child or parent name">
 <div id="list">
 {% for r in rows %}
 <div class="card row" data-text="{{ (r.name ~ ' ' ~ r.guardian)|lower }}">
-<div><strong>{{ r.name }}</strong> <span class="pill">{{ r.age or 'age ?' }}</span><br>
-<span class="sub">Parent: {{ r.guardian or 'unknown' }}{{ ' (present)' if r.guardian_present }}</span>
-{% if r.notes %}<br><span class="pill">Note: {{ r.notes }}</span>{% endif %}
+<div><strong>{{ r.name }}</strong> <span class="pill">{{ r.age or 'age ?' }}</span>{% if r.guardian_present %}<span class="pill g">parent present</span>{% endif %}<br>
+<span class="sub">Parent: {{ r.guardian or 'unknown' }}</span>
+{% if r.notes %}<br><span class="pill r">Note: {{ r.notes }}</span>{% endif %}
 {% if r.state == 'in' %}<br><span class="code">{{ r.code }}</span>{% elif r.state == 'released' %}<br><span class="pill">Released</span>{% endif %}</div>
 {% if r.state == 'out' %}<button data-id="{{ r.id }}">Check in</button>{% endif %}
-</div>{% endfor %}
-</div>
-{% endblock %}
+</div>{% else %}<p class="sub">No children registered yet.</p>{% endfor %}
+</div></div>{% endblock %}
 {% block script %}
 <script>
 document.getElementById('f').oninput=e=>{const v=e.target.value.toLowerCase();document.querySelectorAll('#list .card').forEach(c=>c.style.display=c.dataset.text.includes(v)?'':'none')};

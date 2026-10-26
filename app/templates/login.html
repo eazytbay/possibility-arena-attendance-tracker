@@ -1,11 +1,12 @@
 {% extends "base.html" %}{% block title %}Staff login{% endblock %}
-{% block body %}
-<h1>Staff login</h1><p class="sub">For ushers, children's ministry and admins.</p>
+{% block hero %}<section class="hero"><div class="in">
+<img class="seal-lg" src="{{ url_for('static', filename='rccg-seal.png') }}" alt="" width="96" height="96">
+<h1>Staff login</h1><p>For ushers, children's ministry and admins</p></div></section>{% endblock %}
+{% block body %}<div class="sheet">
 {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
 <form method="post">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-<label for="u">Username</label><input id="u" name="username" autocomplete="username" required autofocus>
+<label for="u" style="margin-top:0">Username</label><input id="u" name="username" autocomplete="username" required autofocus>
 <label for="p">Password</label><input id="p" name="password" type="password" autocomplete="current-password" required>
 <button class="full" type="submit">Log in</button>
-</form>
-{% endblock %}
+</form></div>{% endblock %}

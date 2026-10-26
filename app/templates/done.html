@@ -1,8 +1,12 @@
 {% extends "base.html" %}{% block title %}Registered{% endblock %}
-{% block body %}
+{% block hero %}<section class="hero"><div class="in">
+<div class="check" aria-hidden="true">✓</div>
 <h1>{{ 'Welcome back' if welcome_back else 'Welcome' }}, {{ name }}.</h1>
-<div class="note" role="status">You are marked present today.{% if status == 'first-time visitor' %} We are glad you are here for the first time.{% endif %}</div>
+<p>You are marked present today.</p></div></section>{% endblock %}
+{% block body %}<div class="sheet">
+{% if status == 'first-time visitor' %}<div class="note">We are glad you are with us for the first time. God bless you.</div>{% endif %}
 {% if children %}<h2>Your children</h2>
-{% for c in children %}<div class="card">{{ c.full_name }} <span class="pill">{{ c.age_group or 'age not set' }}</span></div>{% endfor %}
-<p>Take them to the children's ministry desk. They will give you a pickup code.</p>{% endif %}
-{% endblock %}
+{% for c in children %}<div class="card"><strong>{{ c.full_name }}</strong> <span class="pill">{{ c.age_group or 'age not set' }}</span></div>{% endfor %}
+<p class="sub">Take them to the children's ministry desk. You will be given a pickup code there.</p>
+{% else %}<p>Enjoy the service.</p>{% endif %}
+</div>{% endblock %}

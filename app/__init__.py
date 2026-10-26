@@ -46,6 +46,7 @@ def create_app(overrides: dict | None = None) -> Flask:
 
     @app.context_processor
     def inject_globals():
-        return {"church_name": app.config["CHURCH_NAME"]}
+        from .blueprints.auth import current_user
+        return {"church_name": app.config["CHURCH_NAME"], "me": current_user()}
 
     return app

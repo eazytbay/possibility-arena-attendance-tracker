@@ -1,9 +1,11 @@
 {% extends "base.html" %}{% block title %}Poster{% endblock %}
+{% block nav %}{% include "_nav.html" %}{% endblock %}
 {% block body %}
-<div style="text-align:center">
-<h1 style="font-size:2.2rem">Welcome to {{ church_name }}</h1>
-<p>Scan to register and mark your attendance</p>
-<img src="{{ url_for('admin.qr_png') }}" alt="QR code to register" width="320" height="320">
+<div class="sheet" style="text-align:center;margin-top:24px">
+<img class="seal-lg" style="margin:0 auto 10px;width:84px;height:84px" src="{{ url_for('static', filename='rccg-seal.png') }}" alt="" width="84" height="84">
+<h1 style="font-size:2rem;margin:.1em 0">Welcome to Possibility Arena</h1>
+<p class="sub" style="font-size:1.1rem">Scan with your phone camera to register and mark your attendance</p>
+<img src="{{ url_for('admin.qr_png') }}" alt="QR code to register" width="300" height="300" style="max-width:100%;height:auto">
 <p><strong>{{ url }}</strong></p>
-</div>
-{% endblock %}
+<button type="button" class="ghost" onclick="window.print()">Print</button>
+</div>{% endblock %}

@@ -3,15 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0c0b1d">
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<title>{% block title %}Attendance{% endblock %} · {{ church_name }}</title>
+<link rel="icon" href="{{ url_for('static', filename='rccg-seal.png') }}">
+<title>{% block title %}Attendance{% endblock %} · Possibility Arena</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
-<body><main>
-{% block nav %}{% endblock %}
+<body>
+<header class="bar">
+  <a class="brand" href="{{ url_for('auth.index') }}">
+    <img class="seal" src="{{ url_for('static', filename='rccg-seal.png') }}" alt="" width="42" height="42">
+    <span><b>Possibility Arena</b><small>RCCG · Attendance</small></span>
+  </a>
+  {% block nav %}{% endblock %}
+</header>
+{% block hero %}{% endblock %}
+<main class="{% block mainclass %}{% endblock %}">
 {% with msgs = get_flashed_messages() %}{% for m in msgs %}<div class="note" role="status">{{ m }}</div>{% endfor %}{% endwith %}
 {% block body %}{% endblock %}
 </main>
+<footer>
+  <img src="{{ url_for('static', filename='pa-mark.png') }}" alt="Possibility Arena" width="44">
+  {{ church_name }}
+</footer>
 <script>
 const CSRF=document.querySelector('meta[name=csrf-token]').content;
 async function post(url,body){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify(body||{})});return {ok:r.ok,data:await r.json().catch(()=>({}))}}

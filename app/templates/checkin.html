@@ -1,30 +1,29 @@
 {% extends "base.html" %}{% block title %}Check-in{% endblock %}
 {% block nav %}{% include "_nav.html" %}{% endblock %}
-{% block body %}
-<h1>Check-in</h1>
-<p class="sub">{{ service.service_date.strftime('%A %d %B %Y') }} · <span id="count">{{ count }}</span> present</p>
-<label for="q">Search by name or phone</label>
+{% block hero %}<section class="hero left"><div class="in">
+<h1>Check-in</h1><p>{{ service.service_date.strftime('%A %d %B %Y') }} · <strong><span id="count">{{ count }}</span> present</strong></p></div></section>{% endblock %}
+{% block body %}<div class="sheet">
+<label for="q" style="margin-top:0">Search by name or phone</label>
 <input id="q" type="search" autocomplete="off" autofocus placeholder="Type at least 2 letters">
 <div id="results" aria-live="polite"></div>
 <h2>Not found? Add a visitor</h2>
 <div class="card">
-<label for="vn">Full name</label><input id="vn">
+<label for="vn" style="margin-top:0">Full name</label><input id="vn">
 <label for="vp">Mobile number</label><input id="vp" type="tel" inputmode="tel" placeholder="08012345678">
 <button class="full" id="addv" type="button">Add visitor and mark present</button>
-<div id="vmsg" role="status"></div>
-</div>
-{% endblock %}
+<div id="vmsg" role="status" style="margin-top:10px"></div>
+</div></div>{% endblock %}
 {% block script %}
 <script>
 const q=document.getElementById('q'),res=document.getElementById('results'),cnt=document.getElementById('count');let t;
 function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 async function run(){const v=q.value.trim();if(v.length<2){res.innerHTML='';return}
 const r=await fetch('/api/search?q='+encodeURIComponent(v));const list=await r.json();
-res.innerHTML=list.map(p=>`<div class="card row"><div><strong>${esc(p.name)}</strong><br><span class="pill">${esc(p.category)}</span> ${p.department?`<span class="pill">${esc(p.department)}</span>`:''} ${p.phone_tail?`<span class="pill">…${esc(p.phone_tail)}</span>`:''}</div>
-<button data-id="${p.id}" ${p.present?'disabled class="ghost"':''}>${p.present?'Present':'Mark present'}</button></div>`).join('')||'<p class="sub">No match.</p>'}
+res.innerHTML=list.map(p=>`<div class="card row"><div><strong>${esc(p.name)}</strong><br><span class="pill">${esc(p.category)}</span>${p.department?`<span class="pill g">${esc(p.department)}</span>`:''}${p.phone_tail?`<span class="pill">…${esc(p.phone_tail)}</span>`:''}</div>
+<button data-id="${p.id}" ${p.present?'disabled class="ghost"':''}>${p.present?'Present ✓':'Mark present'}</button></div>`).join('')||'<p class="sub">No match yet. You can add them as a visitor below.</p>'}
 q.oninput=()=>{clearTimeout(t);t=setTimeout(run,200)};
 res.onclick=async e=>{const b=e.target.closest('button[data-id]');if(!b||b.disabled)return;b.disabled=true;
-const {ok,data}=await post('/api/checkin/'+b.dataset.id);if(ok){b.textContent='Present';b.className='ghost';if(data.created)cnt.textContent=+cnt.textContent+1}else{b.disabled=false;alert(data.error||'Failed')}};
+const {ok,data}=await post('/api/checkin/'+b.dataset.id);if(ok){b.textContent='Present ✓';b.className='ghost';if(data.created)cnt.textContent=+cnt.textContent+1}else{b.disabled=false;alert(data.error||'Failed')}};
 document.getElementById('addv').onclick=async()=>{const {ok,data}=await post('/api/visitor',{name:vn.value,phone:vp.value});
 const m=document.getElementById('vmsg');m.className=ok?'note':'error';m.textContent=ok?`${data.name} added (${data.status||'visitor'}).`:data.error;if(ok){vn.value=vp.value='';cnt.textContent=+cnt.textContent+1}};
 </script>
