@@ -12,7 +12,7 @@ from werkzeug.security import generate_password_hash
 
 from ..models import CATEGORIES, DEPARTMENTS, MONTHS, ROLES, SEXES, Attendance, Person, Service, User, db
 from ..services.attendance import (attendance_all_csv, attendance_csv, audit, get_or_create_service, new_access_code,
-                                   filter_people, people_csv, visitor_status)
+                                   filter_people, people_csv, visit_counts, visitor_status)
 from .auth import current_user, owner_required, role_required
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -29,13 +29,14 @@ def dashboard():
     svc = get_or_create_service()
     base = Attendance.query.filter_by(service_id=svc.id)
     total = base.count()
-    by_cat = dict(db.session.query(Person.category, func.count())
-                  .join(Attendance, Attendance.person_id == Person.id)
-                  .filter(Attendance.service_id == svc.id).group_by(Person.category).all())
+    cat_expr = func.coalesce(Attendance.category_at_visit, Person.category)
+    by_cat = dict(db.session.query(cat_expr, func.count()).select_from(Attendance)
+                  .join(Person, Person.id == Attendance.person_id)
+                  .filter(Attendance.service_id == svc.id).group_by(cat_expr).all())
     by_dept = db.session.query(Person.department, func.count()).join(
         Attendance, Attendance.person_id == Person.id).filter(
         Attendance.service_id == svc.id, Person.department.isnot(None)).group_by(Person.department).all()
-    visitors = [p for p in (a.person for a in base.all()) if p.category == "visitor"]
+    visitors = [a.person for a in base.all() if (a.category_at_visit or a.person.category) == "visitor"]
     first_time = sum(1 for p in visitors if visitor_status(p, svc) == "first-time visitor")
     services = Service.query.order_by(Service.service_date.desc()).limit(20).all()
     today = date.today()
@@ -106,7 +107,9 @@ def export_people():
 @role_required()
 def people():
     rows = filter_people(request.args).limit(600).all()
-    return render_template("people.html", rows=rows, args=request.args, categories=CATEGORIES,
+    services = Service.query.order_by(Service.service_date.desc()).limit(30).all()
+    return render_template("people.html", rows=rows, services=services,
+                           visits=visit_counts([p.id for p in rows]), args=request.args, categories=CATEGORIES,
                            departments=DEPARTMENTS, sexes=SEXES, months=MONTHS,
                            query=request.query_string.decode())
 

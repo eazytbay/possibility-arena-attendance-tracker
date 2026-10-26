@@ -13,16 +13,13 @@ class Config:
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "false").lower() == "true"
     RATELIMIT_STORAGE_URI = "memory://"
+    # A visitor becomes a member automatically on this many Sundays attended (0 = never).
+    VISITOR_PROMOTE_AFTER = int(os.environ.get("VISITOR_PROMOTE_AFTER", "4"))
     # SMS greetings. Nothing is sent unless SMS_ENABLED=true and a token is set.
     SMS_ENABLED = os.environ.get("SMS_ENABLED", "false").lower() == "true"
     SMS_API_TOKEN = os.environ.get("SMS_API_TOKEN", "")
     SMS_SENDER_ID = os.environ.get("SMS_SENDER_ID", "")
     SMS_GATEWAY = os.environ.get("SMS_GATEWAY", "direct-corporate")
-    SMS_TEXT_BIRTHDAY = os.environ.get(
-        "SMS_TEXT_BIRTHDAY",
-        "Happy birthday, {first_name}! God bless you with more years of joy and favour. "
-        "RCCG Possibility Arena. To opt out, see the welcome team.")
-    SMS_TEXT_NEW_MONTH = os.environ.get(
-        "SMS_TEXT_NEW_MONTH",
-        "Happy new month, {first_name}! May {month} bring you God's favour and joy. "
-        "RCCG Possibility Arena. To opt out, see the welcome team.")
+    # Optional single-wording overrides (leave empty to use the built-in rotating wording)
+    SMS_TEXT_BIRTHDAY = os.environ.get("SMS_TEXT_BIRTHDAY", "")
+    SMS_TEXT_NEW_MONTH = os.environ.get("SMS_TEXT_NEW_MONTH", "")

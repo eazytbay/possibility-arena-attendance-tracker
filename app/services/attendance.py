@@ -61,14 +61,43 @@ def mark_present(person: Person, service: Service, user_id: int | None = None, s
     existing = Attendance.query.filter_by(service_id=service.id, person_id=person.id).first()
     if existing:
         return existing, False
-    att = Attendance(service_id=service.id, person_id=person.id, checked_in_by=user_id, source=source)
+    att = Attendance(service_id=service.id, person_id=person.id, checked_in_by=user_id, source=source,
+                     category_at_visit=person.category)
     db.session.add(att)
     try:
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
         return Attendance.query.filter_by(service_id=service.id, person_id=person.id).one(), False
+    _maybe_promote(person)
     return att, True
+
+
+def visit_count(person_id: int) -> int:
+    """Sundays this person was counted as a visitor."""
+    return (Attendance.query.join(Person, Person.id == Attendance.person_id)
+            .filter(Attendance.person_id == person_id,
+                    db.func.coalesce(Attendance.category_at_visit, Person.category) == "visitor").count())
+
+
+def _maybe_promote(person: Person) -> None:
+    """After enough Sundays a visitor becomes a member. The attendance history keeps 'visitor' for those days."""
+    limit = current_app.config.get("VISITOR_PROMOTE_AFTER", 4)
+    if limit and person.category == "visitor" and visit_count(person.id) >= limit:
+        person.category = "member"
+        db.session.commit()
+        audit("system", "visitor_promoted", f"{person.id}:{person.full_name}")
+
+
+def visit_counts(ids) -> dict:
+    if not ids:
+        return {}
+    rows = (db.session.query(Attendance.person_id, db.func.count())
+            .join(Person, Person.id == Attendance.person_id)
+            .filter(Attendance.person_id.in_(ids),
+                    db.func.coalesce(Attendance.category_at_visit, Person.category) == "visitor")
+            .group_by(Attendance.person_id).all())
+    return dict(rows)
 
 
 def parse_birthday(f):
@@ -144,7 +173,9 @@ def assign_pickup_code(att: Attendance) -> str:
 
 
 def visitor_status(person: Person, service: Service) -> str:
-    if person.category != "visitor":
+    att = Attendance.query.filter_by(person_id=person.id, service_id=service.id).first()
+    category = (att.category_at_visit if att and att.category_at_visit else person.category)
+    if category != "visitor":
         return ""
     earlier = (
         Attendance.query.join(Service)
@@ -160,8 +191,15 @@ def _safe(cell) -> str:
     return "'" + s if s[:1] in ("=", "+", "-", "@") else s
 
 
-def _match(person: Person, flt: dict) -> bool:
-    return all(not v or getattr(person, k) == v for k, v in flt.items())
+def _match(att: Attendance, flt: dict) -> bool:
+    person = att.person
+    for k, v in flt.items():
+        if not v:
+            continue
+        have = (att.category_at_visit or person.category) if k == "category" else getattr(person, k)
+        if have != v:
+            return False
+    return True
 
 
 def attendance_csv(service: Service, flt: dict | None = None) -> str:
@@ -173,11 +211,11 @@ def attendance_csv(service: Service, flt: dict | None = None) -> str:
     rows = Attendance.query.filter_by(service_id=service.id).order_by(Attendance.checked_in_at).all()
     for a in rows:
         p = a.person
-        if flt and not _match(p, flt):
+        if flt and not _match(a, flt):
             continue
         w.writerow([_safe(x) for x in [
-            service.service_date.isoformat(), p.full_name, p.phone or "", p.category, p.department or "",
-            p.sex or "",
+            service.service_date.isoformat(), p.full_name, p.phone or "", a.category_at_visit or p.category,
+            p.department or "", p.sex or "",
             visitor_status(p, service), p.guardian.full_name if p.guardian else "", p.age_group or "",
             a.source, a.checked_in_at.astimezone(tz).strftime("%H:%M"),
             a.released_at.astimezone(tz).strftime("%H:%M") if a.released_at else "",
@@ -188,8 +226,20 @@ def attendance_csv(service: Service, flt: dict | None = None) -> str:
 def filter_people(args):
     """Build the People query from request args: category, department, sex, month, q."""
     q = Person.query
-    if args.get("category") in CATEGORIES:
-        q = q.filter(Person.category == args["category"])
+    cat = args.get("category") if args.get("category") in CATEGORIES else None
+    try:
+        came_on = date.fromisoformat(args.get("came_on", ""))
+    except ValueError:
+        came_on = None
+    if came_on:
+        # Who was here that Sunday, and as what (a visitor then stays a visitor in that Sunday's list).
+        sub = (db.session.query(Attendance.person_id).join(Service, Service.id == Attendance.service_id)
+               .join(Person, Person.id == Attendance.person_id).filter(Service.service_date == came_on))
+        if cat:
+            sub = sub.filter(db.func.coalesce(Attendance.category_at_visit, Person.category) == cat)
+        q = q.filter(Person.id.in_(sub))
+    elif cat:
+        q = q.filter(Person.category == cat)
     if args.get("department") in DEPARTMENTS:
         q = q.filter(Person.department == args["department"])
     if args.get("sex") in SEXES:
@@ -206,12 +256,15 @@ def people_csv(people=None) -> str:
     buf = io.StringIO()
     w = csv.writer(buf)
     w.writerow(["name", "phone", "category", "department", "sex", "birthday", "age_group", "guardian", "notes",
-                "registered"])
-    for p in (people if people is not None else Person.query.order_by(Person.full_name)):
+                "registered", "sundays_as_visitor"])
+    people = list(people if people is not None else Person.query.order_by(Person.full_name))
+    visits = visit_counts([p.id for p in people])
+    for p in people:
         bday = f"{p.birth_day:02d} {calendar.month_abbr[p.birth_month]}" if p.birth_month else ""
         w.writerow([_safe(x) for x in [
             p.full_name, p.phone or "", p.category, p.department or "", p.sex or "", bday, p.age_group or "",
             p.guardian.full_name if p.guardian else "", p.notes or "", p.created_at.date().isoformat(),
+            visits.get(p.id, 0),
         ]])
     return buf.getvalue()
 
@@ -271,8 +324,8 @@ def attendance_all_csv() -> str:
     for a in rows:
         p = a.person
         w.writerow([_safe(x) for x in [
-            a.service.service_date.isoformat(), p.full_name, p.phone or "", p.category, p.department or "",
-            p.sex or "", p.guardian.full_name if p.guardian else "", p.age_group or "", a.source,
+            a.service.service_date.isoformat(), p.full_name, p.phone or "", a.category_at_visit or p.category,
+            p.department or "", p.sex or "", p.guardian.full_name if p.guardian else "", p.age_group or "", a.source,
             a.checked_in_at.astimezone(tz).strftime("%H:%M"),
         ]])
     return buf.getvalue()

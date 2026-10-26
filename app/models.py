@@ -61,6 +61,7 @@ class Attendance(db.Model):
     checked_in_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     source = db.Column(db.String(10), nullable=False, default="usher")
     pickup_code = db.Column(db.String(4), nullable=True)
+    category_at_visit = db.Column(db.String(10), nullable=True)  # category on that Sunday (survives promotion)
     released_at = db.Column(db.DateTime(timezone=True), nullable=True)
     released_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     service = db.relationship("Service")

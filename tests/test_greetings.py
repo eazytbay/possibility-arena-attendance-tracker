@@ -106,3 +106,32 @@ def test_messages_fit_one_sms_page(app):
     prov = FakeProvider()
     run_greetings(prov, now=at(2026, 9, 1))
     assert all(len(t) <= 160 for _, t in prov.sent), [len(t) for _, t in prov.sent]
+
+
+def test_every_wording_fits_one_page_with_longest_name():
+    import calendar
+    from app.services.message_text import BIRTHDAY, NEW_MONTH, FOOTER, MAX_NAME, birthday_text, new_month_text
+    name = "W" * 40  # gets shortened to MAX_NAME
+    longest_month = max(calendar.month_name[1:], key=len)
+    for i in range(len(BIRTHDAY)):
+        assert len(birthday_text(name, i, 2026)) <= 160
+    for m in range(1, 13):
+        for y in (2026, 2027, 2028):
+            assert len(new_month_text(name, calendar.month_name[m], y, m)) <= 160
+    assert all(len((t + FOOTER).format(name="W" * MAX_NAME, month=longest_month)) <= 160 for t in BIRTHDAY + NEW_MONTH)
+
+
+def test_new_month_wording_changes_between_months_but_is_same_within_a_month(app):
+    from app.services.message_text import new_month_text
+    a = new_month_text("Ada", "November", 2026, 11)
+    assert a == new_month_text("Bola", "November", 2026, 11).replace("Bola", "Ada")
+    assert a.split("{")[0] != new_month_text("Ada", "December", 2026, 12)
+
+
+def test_no_opt_out_text_and_names_are_personal(app):
+    mk("Ada Obi", "08011111111", month=11, day=5)
+    mk("Bola Ade", "08022222222", month=11, day=5)
+    prov = FakeProvider()
+    run_greetings(prov, now=at(2026, 11, 5))
+    assert "opt out" not in " ".join(t for _, t in prov.sent).lower()
+    assert any("Ada" in t for _, t in prov.sent) and any("Bola" in t for _, t in prov.sent)
