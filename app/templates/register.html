@@ -2,14 +2,24 @@
 {% block hero %}<section class="hero"><div class="in">
 <img class="seal-lg" src="{{ url_for('static', filename='rccg-seal.png') }}" alt="The Redeemed Christian Church of God" width="96" height="96">
 <h1>Welcome to Possibility Arena</h1>
-<p>Register once. You are marked present for today.</p></div></section>{% endblock %}
+<p>{{ 'Mark your attendance for today.' if step == 'attend' else 'Tell us about yourself once. You will be marked present.' }}</p></div></section>{% endblock %}
 {% block body %}<div class="sheet">
 {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
 <form method="post" autocomplete="on">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input type="hidden" name="step" value="{{ step }}">
 <div class="hp" aria-hidden="true"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
-<label for="n" style="margin-top:0">Full name</label><input id="n" name="full_name" autocomplete="name" required value="{{ form.get('full_name','') }}">
-<label for="ph">Mobile number</label><input id="ph" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="08012345678" required value="{{ form.get('phone','') }}">
+{% if step == 'attend' %}
+<label for="code" style="margin-top:0">Today's service code</label>
+<input id="code" name="code" autocapitalize="characters" autocomplete="off" maxlength="8" required placeholder="Ask an usher" value="{{ form.get('code','') }}">
+<label for="ph">Mobile number</label>
+<input id="ph" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="08012345678" required value="{{ form.get('phone','') }}">
+<button class="full" type="submit">Mark me present</button>
+<p class="sub" style="margin-top:14px">First time here? Enter the code and your number, and we will ask for your details once.</p>
+{% else %}
+<input type="hidden" name="code" value="{{ form.get('code','') }}">
+<label for="ph" style="margin-top:0">Mobile number</label><input id="ph" name="phone" type="tel" inputmode="tel" required value="{{ form.get('phone','') }}">
+<label for="n">Full name</label><input id="n" name="full_name" autocomplete="name" required value="{{ form.get('full_name','') }}">
 <label for="c">I am a</label>
 <select id="c" name="category" required>
 {% for c in categories %}<option value="{{ c }}" {{ 'selected' if form.get('category')==c }}>{{ c|capitalize }}</option>{% endfor %}
@@ -22,8 +32,9 @@
 <div id="kids"></div>
 <button type="button" class="ghost" id="addkid">+ Add a child</button>
 <button class="full" type="submit">Register me</button>
+{% endif %}
 </form></div>{% endblock %}
-{% block script %}
+{% block script %}{% if step == 'full' %}
 <script>
 const ages={{ age_groups|tojson }};
 function addKid(){const d=document.createElement('div');d.className='child-row';
@@ -33,5 +44,5 @@ d.innerHTML=`<label>Child's name</label><input name="child_name" maxlength="120"
 document.getElementById('addkid').onclick=addKid;
 const cat=document.getElementById('c'),dept=document.getElementById('dept');
 function sync(){dept.style.display=cat.value==='visitor'?'none':''}cat.onchange=sync;sync();
-</script>
+</script>{% endif %}
 {% endblock %}

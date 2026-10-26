@@ -4,6 +4,14 @@
 {% block hero %}<section class="hero left"><div class="in">
 <h1>Today's attendance</h1><p>{{ svc.service_date.strftime('%A %d %B %Y') }}</p></div></section>{% endblock %}
 {% block body %}<div class="sheet">
+<div class="card" style="text-align:center">
+<div class="sub" style="margin:0">Today's service code (announce it or show it on screen)</div>
+<div class="code" style="font-size:2.6rem">{{ svc.access_code }}</div>
+<p class="sub" style="margin:8px 0 12px">Self check-in is <strong>{{ 'open' if svc.registration_open else 'closed' }}</strong>.</p>
+<div class="btn-row" style="justify-content:center">
+<form method="post" action="{{ url_for('admin.toggle_registration') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost" type="submit">{{ 'Close self check-in' if svc.registration_open else 'Open self check-in' }}</button></form>
+<form method="post" action="{{ url_for('admin.regenerate_code') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost" type="submit">New code</button></form>
+</div></div>
 <div class="stats">
 <div class="stat"><b>{{ total }}</b><span>present</span></div>
 <div class="stat"><b>{{ first_time }}</b><span>first-time visitors</span></div>

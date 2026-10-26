@@ -1,51 +1,70 @@
 from flask import Blueprint, render_template, request
 
 from .. import limiter
-from ..models import ADULT_CATEGORIES, AGE_GROUPS, DEPARTMENTS
-from ..services.attendance import (add_child, get_or_create_service, mark_present,
+from ..models import ADULT_CATEGORIES, AGE_GROUPS, DEPARTMENTS, Person
+from ..services.attendance import (add_child, code_is_valid, get_or_create_service, mark_present,
                                    upsert_adult, visitor_status)
 from ..services.phone import normalize_phone
 
 bp = Blueprint("public", __name__)
 
 
+def _page(step, form, error=None, status=200):
+    return render_template("register.html", step=step, form=form, error=error, categories=ADULT_CATEGORIES,
+                           departments=DEPARTMENTS, age_groups=AGE_GROUPS), status
+
+
 @bp.route("/register", methods=["GET", "POST"])
 @limiter.limit("60 per minute", methods=["POST"])  # a whole congregation may share one church Wi-Fi IP
 def register():
-    ctx = dict(categories=ADULT_CATEGORIES, departments=DEPARTMENTS, age_groups=AGE_GROUPS, error=None, form={})
     if request.method == "GET":
-        return render_template("register.html", **ctx)
+        return _page("attend", {})
 
     f = request.form
-    ctx["form"] = f
     if f.get("website"):  # honeypot field: real people never fill it
         return render_template("done.html", name="friend", status="", children=[], welcome_back=False)
-    name = " ".join(f.get("full_name", "").split())[:120]
+
+    step = f.get("step", "full")
+    svc = get_or_create_service()
+    if not svc.registration_open:
+        return _page("attend", f, "Attendance is closed for today. Please see an usher.", 403)
+    if not code_is_valid(svc, f.get("code", "")):
+        return _page("attend", f, "That service code is not correct. Ask an usher for today's code.", 400)
+
     phone = normalize_phone(f.get("phone"))
+    if not phone:
+        return _page(step, f, "Enter a valid Nigerian mobile number, for example 08012345678.", 400)
+
+    if step == "attend":
+        person = Person.query.filter_by(phone=phone).first()
+        if person and person.category != "child":
+            _, _created = mark_present(person, svc, source="self")
+            return render_template("done.html", name=person.full_name.split()[0],
+                                   status=visitor_status(person, svc),
+                                   children=list(person.children), welcome_back=True)
+        return _page("full", f, "We do not have this number yet. Please complete your details once.")
+
+    name = " ".join(f.get("full_name", "").split())[:120]
     category = f.get("category", "")
     department = f.get("department") or None
+    error = None
     if len(name) < 3:
-        ctx["error"] = "Please enter your full name."
-    elif not phone:
-        ctx["error"] = "Enter a valid Nigerian mobile number, for example 08012345678."
+        error = "Please enter your full name."
     elif category not in ADULT_CATEGORIES:
-        ctx["error"] = "Please choose who you are."
+        error = "Please choose who you are."
     elif department and department not in DEPARTMENTS:
-        ctx["error"] = "Please choose a department from the list."
-    if ctx["error"]:
-        return render_template("register.html", **ctx), 400
+        error = "Please choose a department from the list."
+    if error:
+        return _page("full", f, error, 400)
 
     if category == "visitor":
         department = None
     person, created = upsert_adult(name, phone, category, department)
-    svc = get_or_create_service()
     status = visitor_status(person, svc)
     mark_present(person, svc, source="self")
 
     kids = []
-    names = f.getlist("child_name")
-    ages = f.getlist("child_age")
-    notes = f.getlist("child_notes")
+    names, ages, notes = f.getlist("child_name"), f.getlist("child_age"), f.getlist("child_notes")
     for i, cname in enumerate(names[:12]):
         cname = " ".join(cname.split())[:120]
         if not cname:
@@ -54,4 +73,4 @@ def register():
         note = (notes[i] if i < len(notes) else "").strip()[:300] or None
         kids.append(add_child(person, cname, age, note))
     return render_template("done.html", name=person.full_name.split()[0], status=status,
-                           children=kids, welcome_back=not created)
+                           children=kids or list(person.children), welcome_back=not created)

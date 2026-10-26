@@ -37,6 +37,8 @@ class Service(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     service_date = db.Column(db.Date, unique=True, nullable=False)
     name = db.Column(db.String(80), nullable=False)
+    access_code = db.Column(db.String(8), nullable=True)
+    registration_open = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
 
 
 class Attendance(db.Model):

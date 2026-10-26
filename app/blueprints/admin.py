@@ -8,8 +8,8 @@ from sqlalchemy import func
 from werkzeug.security import generate_password_hash
 
 from ..models import ROLES, Attendance, Person, Service, User, db
-from ..services.attendance import (attendance_csv, audit, get_or_create_service, people_csv,
-                                   visitor_status)
+from ..services.attendance import (attendance_csv, audit, get_or_create_service, new_access_code,
+                                   people_csv, visitor_status)
 from .auth import current_user, role_required
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -39,6 +39,29 @@ def dashboard():
                            first_time=first_time, services=services,
                            people_total=Person.query.count(), users=User.query.order_by(User.username).all(),
                            roles=ROLES)
+
+
+@bp.post("/service/code")
+@role_required()
+def regenerate_code():
+    svc = get_or_create_service()
+    svc.access_code = new_access_code()
+    db.session.commit()
+    audit(current_user().username, "new_code", svc.service_date.isoformat())
+    flash("A new service code is active. The old one no longer works.")
+    return redirect(url_for("admin.dashboard"))
+
+
+@bp.post("/service/toggle")
+@role_required()
+def toggle_registration():
+    svc = get_or_create_service()
+    svc.registration_open = not svc.registration_open
+    db.session.commit()
+    audit(current_user().username, "registration_open" if svc.registration_open else "registration_closed",
+          svc.service_date.isoformat())
+    flash("Self check-in is open." if svc.registration_open else "Self check-in is closed.")
+    return redirect(url_for("admin.dashboard"))
 
 
 @bp.get("/export/attendance.csv")

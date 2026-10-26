@@ -1,4 +1,5 @@
 import csv
+import hmac
 import io
 import logging
 import secrets
@@ -22,12 +23,27 @@ def audit(actor: str, action: str, detail: str = "") -> None:
     db.session.commit()
 
 
+_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O/1/I to avoid read-aloud mistakes
+
+
+def new_access_code() -> str:
+    return "".join(secrets.choice(_CODE_ALPHABET) for _ in range(5))
+
+
+def code_is_valid(service: Service, supplied: str) -> bool:
+    return bool(service.access_code) and hmac.compare_digest(
+        (supplied or "").strip().upper(), service.access_code)
+
+
 def get_or_create_service(d: date | None = None) -> Service:
     d = d or today_local()
     svc = Service.query.filter_by(service_date=d).first()
     if svc:
+        if not svc.access_code:
+            svc.access_code = new_access_code()
+            db.session.commit()
         return svc
-    svc = Service(service_date=d, name=f"Service {d.isoformat()}")
+    svc = Service(service_date=d, name=f"Service {d.isoformat()}", access_code=new_access_code())
     db.session.add(svc)
     try:
         db.session.commit()

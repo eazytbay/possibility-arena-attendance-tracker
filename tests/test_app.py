@@ -17,8 +17,13 @@ def test_csv_formula_injection_neutralised():
     assert _safe("Ada") == "Ada"
 
 
+def code():
+    from app.services.attendance import get_or_create_service
+    return get_or_create_service().access_code
+
+
 def reg(client, **over):
-    data = {"full_name": "Ada Obi", "phone": "08012345678", "category": "member"}
+    data = {"full_name": "Ada Obi", "phone": "08012345678", "category": "member", "code": code()}
     data.update(over)
     return client.post("/register", data=data)
 
@@ -54,7 +59,7 @@ def test_known_member_not_downgraded_to_visitor(client):
 
 def test_children_registered_under_guardian(client):
     client.post("/register", data={"full_name": "Ada Obi", "phone": "08012345678", "category": "member",
-                                   "child_name": ["Tomi", ""], "child_age": ["3-5", ""], "child_notes": ["nuts", ""]})
+                                   "code": code(), "child_name": ["Tomi", ""], "child_age": ["3-5", ""], "child_notes": ["nuts", ""]})
     kid = Person.query.filter_by(category="child").one()
     assert kid.guardian.full_name == "Ada Obi" and kid.phone is None
     assert Attendance.query.count() == 1  # parent only; child checked in by ministry
@@ -85,15 +90,15 @@ def test_search_finds_by_name_and_phone(client):
 
 def test_children_pickup_flow(client):
     client.post("/register", data={"full_name": "Ada Obi", "phone": "08012345678", "category": "member",
-                                   "child_name": ["Tomi"], "child_age": ["3-5"], "child_notes": [""]})
+                                   "code": code(), "child_name": ["Tomi"], "child_age": ["3-5"], "child_notes": [""]})
     kid = Person.query.filter_by(category="child").one()
     login(client, "kids")
-    code = client.post(f"/api/children/{kid.id}/checkin").get_json()["code"]
-    assert len(code) == 4
-    assert client.post("/api/children/release", json={"code": "0000" if code != "0000" else "1111"}).status_code == 404
-    ok = client.post("/api/children/release", json={"code": code}).get_json()
+    pcode = client.post(f"/api/children/{kid.id}/checkin").get_json()["code"]
+    assert len(pcode) == 4
+    assert client.post("/api/children/release", json={"code": "0000" if pcode != "0000" else "1111"}).status_code == 404
+    ok = client.post("/api/children/release", json={"code": pcode}).get_json()
     assert ok["child"] == "Tomi" and ok["guardian"] == "Ada Obi"
-    assert client.post("/api/children/release", json={"code": code}).status_code == 404  # cannot release twice
+    assert client.post("/api/children/release", json={"code": pcode}).status_code == 404  # cannot release twice
 
 
 def test_permissions(client):
@@ -123,3 +128,37 @@ def test_pages_render(client):
     login(client, "admin")
     for url in ("/admin/", "/admin/poster", "/admin/qr.png", "/checkin", "/children", "/admin/export/people.csv"):
         assert client.get(url).status_code == 200, url
+
+
+def test_wrong_code_blocks_registration(client):
+    assert reg(client, code="WRONG").status_code == 400
+    assert Person.query.count() == 0
+
+
+def test_closed_registration_blocks_everyone(client):
+    from app.services.attendance import get_or_create_service
+    svc = get_or_create_service(); svc.registration_open = False; db.session.commit()
+    assert reg(client).status_code == 403
+    assert Person.query.count() == 0
+
+
+def test_known_member_marks_attendance_with_code_and_phone(client):
+    reg(client)
+    Attendance.query.delete(); db.session.commit()
+    r = client.post("/register", data={"step": "attend", "phone": "0801 234 5678", "code": code().lower()})
+    assert r.status_code == 200 and Attendance.query.count() == 1 and Person.query.count() == 1
+
+
+def test_unknown_phone_is_asked_for_details(client):
+    r = client.post("/register", data={"step": "attend", "phone": "08055555555", "code": code()})
+    assert b"complete your details" in r.data and Person.query.count() == 0
+
+
+def test_admin_can_rotate_code_and_close(client):
+    old = code()
+    login(client, "admin")
+    client.post("/admin/service/code")
+    assert code() != old
+    client.post("/admin/service/toggle")
+    from app.services.attendance import get_or_create_service
+    assert get_or_create_service().registration_open is False
