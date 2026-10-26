@@ -31,6 +31,8 @@ class Person(db.Model):
     notes = db.Column(db.String(300), nullable=True)
     birth_month = db.Column(db.SmallInteger, nullable=True)  # day and month only, never the year
     birth_day = db.Column(db.SmallInteger, nullable=True)
+    has_photo = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
+    photo = db.deferred(db.Column(db.LargeBinary, nullable=True))  # small JPEG thumbnail, adults only
     guardian_id = db.Column(db.Integer, db.ForeignKey("people.id"), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
     guardian = db.relationship("Person", remote_side=[id], backref="children")

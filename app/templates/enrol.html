@@ -5,7 +5,7 @@
 {% block body %}<div class="sheet">
 <p class="sub">Take the person's details. They are saved and marked present. If they are already on record, search for them under Check-in instead.</p>
 {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
-<form method="post" autocomplete="off">
+<form method="post" autocomplete="off" enctype="multipart/form-data">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 <label for="n" style="margin-top:0">Full name</label><input id="n" name="full_name" required autofocus value="{{ form.get('full_name','') }}">
 <label for="ph">Mobile number</label><input id="ph" name="phone" type="tel" inputmode="tel" placeholder="08012345678" required value="{{ form.get('phone','') }}">
@@ -19,6 +19,9 @@
 <div id="dept"><label for="d">Department</label>
 <select id="d" name="department"><option value="">None</option>
 {% for d in departments %}<option {{ 'selected' if form.get('department')==d }}>{{ d }}</option>{% endfor %}</select></div>
+<label for="ph2">Photo (optional, adults only)</label>
+<input id="ph2" name="photo" type="file" accept="image/*">
+<p class="sub" style="margin:6px 0 0">Used only to recognise people in the church's attendance records. It is shrunk to a small thumbnail.</p>
 <h2>Children with them</h2>
 <div id="kids"></div>
 <button type="button" class="ghost" id="addkid">+ Add a child</button>
@@ -34,5 +37,11 @@ d.innerHTML=`<label>Child's name</label><input name="child_name" maxlength="120"
 document.getElementById('addkid').onclick=addKid;
 const cat=document.getElementById('c'),dept=document.getElementById('dept');
 function sync(){dept.style.display=cat.value==='visitor'?'none':''}cat.onchange=sync;sync();
+</script>
+<script>
+document.getElementById('ph2').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;
+try{const bmp=await createImageBitmap(f);const s=Math.min(bmp.width,bmp.height),c=document.createElement('canvas');c.width=c.height=240;
+c.getContext('2d').drawImage(bmp,(bmp.width-s)/2,(bmp.height-s)/2,s,s,0,0,240,240);
+const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.7));const dt=new DataTransfer();dt.items.add(new File([blob],'photo.jpg',{type:'image/jpeg'}));e.target.files=dt.files}catch(_){}});
 </script>
 {% endblock %}

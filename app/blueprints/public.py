@@ -5,6 +5,7 @@ from ..models import ADULT_CATEGORIES, AGE_GROUPS, DEPARTMENTS, MONTHS, Person
 from ..services.attendance import (code_is_valid, get_or_create_service, mark_present, register_full,
                                    visitor_status)
 from ..services.phone import normalize_phone
+from ..services.photos import process_photo
 
 bp = Blueprint("public", __name__)
 
@@ -47,7 +48,11 @@ def register():
                                    children=list(person.children), welcome_back=True)
         return _page("full", f, "We do not have this number yet. Please complete your details once.")
 
-    res, error = register_full(f, svc, None, "self")
+    try:
+        photo = process_photo(request.files.get("photo"))
+    except ValueError as exc:
+        return _page("full", f, str(exc), 400)
+    res, error = register_full(f, svc, None, "self", photo)
     if error:
         return _page("full", f, error, 400)
     person = res["person"]

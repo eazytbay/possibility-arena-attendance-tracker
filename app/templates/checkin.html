@@ -19,7 +19,7 @@ const q=document.getElementById('q'),res=document.getElementById('results'),cnt=
 function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 async function run(){const v=q.value.trim();if(v.length<2){res.innerHTML='';return}
 const r=await fetch('/api/search?q='+encodeURIComponent(v));const list=await r.json();
-res.innerHTML=list.map(p=>`<div class="card row"><div><strong>${esc(p.name)}</strong><br><span class="pill">${esc(p.category)}</span>${p.department?`<span class="pill g">${esc(p.department)}</span>`:''}${p.phone_tail?`<span class="pill">…${esc(p.phone_tail)}</span>`:''}</div>
+res.innerHTML=list.map(p=>`<div class="card row"><div style="display:flex;gap:12px;align-items:center">${p.photo?`<img class="avatar" src="/photo/${p.id}.jpg" alt="" width="48" height="48">`:''}<div><strong>${esc(p.name)}</strong><br><span class="pill">${esc(p.category)}</span>${p.department?`<span class="pill g">${esc(p.department)}</span>`:''}${p.phone_tail?`<span class="pill">…${esc(p.phone_tail)}</span>`:''}</div></div>
 <button data-id="${p.id}" ${p.present?'disabled class="ghost"':''}>${p.present?'Present ✓':'Mark present'}</button></div>`).join('')||'<p class="sub">No match yet. You can add them as a visitor below.</p>'}
 q.oninput=()=>{clearTimeout(t);t=setTimeout(run,200)};
 res.onclick=async e=>{const b=e.target.closest('button[data-id]');if(!b||b.disabled)return;b.disabled=true;

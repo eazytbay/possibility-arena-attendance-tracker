@@ -182,7 +182,7 @@ def people_csv() -> str:
     return buf.getvalue()
 
 
-def register_full(f, svc: Service, user_id: int | None = None, source: str = "self"):
+def register_full(f, svc: Service, user_id: int | None = None, source: str = "self", photo: bytes | None = None):
     """Validate one registration form, save the adult and children, mark present.
 
     Returns (result_dict, None) on success or (None, error_message).
@@ -205,6 +205,9 @@ def register_full(f, svc: Service, user_id: int | None = None, source: str = "se
     if category == "visitor":
         department = None
     person, created = upsert_adult(name, phone, category, department, (bm, bd))
+    if photo:
+        person.photo, person.has_photo = photo, True
+        db.session.commit()
     status = visitor_status(person, svc)
     mark_present(person, svc, user_id, source)
     kids = []

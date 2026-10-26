@@ -73,3 +73,5 @@ footer img{width:44px;height:auto;display:block;margin:0 auto 8px;border-radius:
 
 main>.note{position:relative;margin:0 0 12px;box-shadow:0 6px 18px #0c0b1d33;font-weight:600}
 .hero+main>.note:first-child{margin-top:60px}
+
+.avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;flex:none;border:2px solid var(--line)}

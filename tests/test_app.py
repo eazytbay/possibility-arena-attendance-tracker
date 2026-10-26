@@ -292,3 +292,47 @@ def test_birthday_saved_validated_and_exported(client):
     # re-registering without a birthday must not erase it
     client.post("/enrol", data=base)
     assert Person.query.one().birth_month == 2
+
+
+def _jpeg(w=2000, h=1500):
+    import io
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.effect_noise((w, h), 40).convert("RGB").save(buf, "JPEG", quality=95)
+    buf.seek(0)
+    return buf
+
+
+def test_photo_shrunk_stored_and_protected(client):
+    import io
+    from PIL import Image
+    login(client, "usher")
+    r = client.post("/enrol", data={"full_name": "Chidi Eze", "phone": "07011112222", "category": "member",
+                                    "photo": (_jpeg(), "big.jpg")}, content_type="multipart/form-data")
+    assert r.status_code == 302
+    p = Person.query.one()
+    assert p.has_photo and len(p.photo) < 40_000
+    img = Image.open(io.BytesIO(p.photo))
+    assert img.size == (240, 240) and img.format == "JPEG"
+    assert client.get(f"/photo/{p.id}.jpg").mimetype == "image/jpeg"
+    assert client.get(f"/api/search?q=chidi").get_json()[0]["photo"] is True
+    client.post("/logout")
+    assert client.get(f"/photo/{p.id}.jpg").status_code == 302       # not logged in
+
+
+def test_bad_photo_rejected_and_nothing_saved(client):
+    import io
+    login(client, "usher")
+    r = client.post("/enrol", data={"full_name": "Chidi Eze", "phone": "07011112222", "category": "member",
+                                    "photo": (io.BytesIO(b"not an image"), "x.jpg")},
+                    content_type="multipart/form-data")
+    assert b"not a valid photo" in r.data and Person.query.count() == 0
+
+
+def test_children_never_have_photo_served(client):
+    login(client, "usher")
+    client.post("/enrol", data={"full_name": "Ada Obi", "phone": "08012345678", "category": "member",
+                                "child_name": ["Tomi"], "child_age": ["3-5"], "child_notes": [""]})
+    kid = Person.query.filter_by(category="child").one()
+    kid.photo, kid.has_photo = b"x", True; db.session.commit()
+    assert client.get(f"/photo/{kid.id}.jpg").status_code == 404
