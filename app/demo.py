@@ -29,7 +29,8 @@ def reset_demo() -> None:
         cat = rnd.choices(["member", "worker", "minister", "visitor"], [18, 10, 2, 6])[0]
         dept = rnd.choice(DEPARTMENTS) if cat in ("worker", "minister") else None
         p = Person(full_name=f"{_FIRST[i % len(_FIRST)]} {_LAST[(i * 3) % len(_LAST)]}",
-                   phone=f"0801000{i:04d}", category=cat, department=dept)
+                   phone=f"0801000{i:04d}", category=cat, department=dept,
+                   birth_month=rnd.choice([today_local().month, rnd.randint(1, 12)]), birth_day=rnd.randint(1, 28))
         db.session.add(p)
         adults.append(p)
     db.session.commit()

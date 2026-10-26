@@ -6,7 +6,7 @@ from flask import (Blueprint, current_app, flash, jsonify, redirect, render_temp
 from sqlalchemy import or_
 
 from .. import limiter
-from ..models import ADULT_CATEGORIES, AGE_GROUPS, DEPARTMENTS, Attendance, Person, db
+from ..models import ADULT_CATEGORIES, AGE_GROUPS, DEPARTMENTS, MONTHS, Attendance, Person, db
 from ..services.attendance import (assign_pickup_code, audit, get_or_create_service,
                                    mark_present, register_full, upsert_adult, visitor_status)
 from ..services.phone import normalize_phone
@@ -33,7 +33,7 @@ def enrol():
             return redirect(url_for("staff.enrol"))
     count = Attendance.query.filter_by(service_id=svc.id).count()
     return render_template("enrol.html", service=svc, count=count, form=form, error=error,
-                           categories=ADULT_CATEGORIES, departments=DEPARTMENTS, age_groups=AGE_GROUPS)
+                           categories=ADULT_CATEGORIES, departments=DEPARTMENTS, age_groups=AGE_GROUPS, months=MONTHS)
 
 
 @bp.get("/display")

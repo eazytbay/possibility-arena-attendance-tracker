@@ -38,9 +38,13 @@ def dashboard():
     visitors = [p for p in (a.person for a in base.all()) if p.category == "visitor"]
     first_time = sum(1 for p in visitors if visitor_status(p, svc) == "first-time visitor")
     services = Service.query.order_by(Service.service_date.desc()).limit(20).all()
+    today = date.today()
+    birthdays = (Person.query.filter(Person.birth_month == svc.service_date.month, Person.category != "child")
+                 .order_by(Person.birth_day, Person.full_name).all())
     return render_template("admin.html", svc=svc, total=total, by_cat=by_cat, by_dept=sorted(by_dept),
                            first_time=first_time, services=services,
-                           people_total=Person.query.count())
+                           people_total=Person.query.count(), birthdays=birthdays,
+                           today_day=svc.service_date.day, month_name=svc.service_date.strftime('%B'))
 
 
 @bp.post("/service/code")

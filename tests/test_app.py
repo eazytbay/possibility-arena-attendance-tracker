@@ -275,3 +275,20 @@ def test_export_by_date_and_all(client):
     assert allcsv.splitlines()[0].startswith("service_date") and "Ada Obi" in allcsv
     r = client.get("/admin/export/attendance.csv?date=2020-01-05", follow_redirects=True)
     assert b"No attendance was recorded" in r.data
+
+
+def test_birthday_saved_validated_and_exported(client):
+    login(client, "usher")
+    base = {"full_name": "Chidi Eze", "phone": "07011112222", "category": "member"}
+    bad = client.post("/enrol", data={**base, "birth_month": "2", "birth_day": "30"})
+    assert b"not a valid date" in bad.data and Person.query.count() == 0
+    half = client.post("/enrol", data={**base, "birth_month": "5"})
+    assert b"both the month and the day" in half.data
+    assert client.post("/enrol", data={**base, "birth_month": "2", "birth_day": "29"}).status_code == 302
+    p = Person.query.one()
+    assert (p.birth_month, p.birth_day) == (2, 29)
+    client.post("/logout"); login(client, "admin")
+    assert "29 Feb" in client.get("/admin/export/people.csv").data.decode("utf-8-sig")
+    # re-registering without a birthday must not erase it
+    client.post("/enrol", data=base)
+    assert Person.query.one().birth_month == 2

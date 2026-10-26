@@ -1,7 +1,7 @@
 from flask import Blueprint, current_app, render_template, request
 
 from .. import limiter
-from ..models import ADULT_CATEGORIES, AGE_GROUPS, DEPARTMENTS, Person
+from ..models import ADULT_CATEGORIES, AGE_GROUPS, DEPARTMENTS, MONTHS, Person
 from ..services.attendance import (code_is_valid, get_or_create_service, mark_present, register_full,
                                    visitor_status)
 from ..services.phone import normalize_phone
@@ -12,7 +12,7 @@ bp = Blueprint("public", __name__)
 def _page(step, form, error=None, status=200):
     demo_code = get_or_create_service().access_code if current_app.config["DEMO_MODE"] else None
     return render_template("register.html", step=step, form=form, error=error, categories=ADULT_CATEGORIES,
-                           departments=DEPARTMENTS, age_groups=AGE_GROUPS, demo_code=demo_code), status
+                           departments=DEPARTMENTS, age_groups=AGE_GROUPS, months=MONTHS, demo_code=demo_code), status
 
 
 @bp.route("/register", methods=["GET", "POST"])

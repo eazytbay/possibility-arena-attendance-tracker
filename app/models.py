@@ -12,6 +12,8 @@ DEPARTMENTS = (
 )
 ROLES = ("owner", "admin", "media", "usher", "children")
 AGE_GROUPS = ("0-2", "3-5", "6-9", "10-12", "13-17")
+MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August", "September",
+          "October", "November", "December")
 
 
 def utcnow() -> datetime:
@@ -27,6 +29,8 @@ class Person(db.Model):
     department = db.Column(db.String(40), nullable=True)
     age_group = db.Column(db.String(8), nullable=True)
     notes = db.Column(db.String(300), nullable=True)
+    birth_month = db.Column(db.SmallInteger, nullable=True)  # day and month only, never the year
+    birth_day = db.Column(db.SmallInteger, nullable=True)
     guardian_id = db.Column(db.Integer, db.ForeignKey("people.id"), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
     guardian = db.relationship("Person", remote_side=[id], backref="children")

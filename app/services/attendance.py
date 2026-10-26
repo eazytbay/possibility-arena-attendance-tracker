@@ -1,3 +1,4 @@
+import calendar
 import csv
 import hmac
 import io
@@ -70,17 +71,34 @@ def mark_present(person: Person, service: Service, user_id: int | None = None, s
     return att, True
 
 
-def upsert_adult(name: str, phone: str, category: str, department: str | None):
+def parse_birthday(f):
+    """Return (month, day, error). Both empty is fine; the year is never collected."""
+    m, d = (f.get("birth_month") or "").strip(), (f.get("birth_day") or "").strip()
+    if not m and not d:
+        return None, None, None
+    try:
+        mi, di = int(m), int(d)
+    except ValueError:
+        return None, None, "Choose both the month and the day of birth, or leave both empty."
+    if not 1 <= mi <= 12 or not 1 <= di <= calendar.monthrange(2000, mi)[1]:
+        return None, None, "That birthday is not a valid date."
+    return mi, di, None
+
+
+def upsert_adult(name: str, phone: str, category: str, department: str | None, birth=(None, None)):
     """Find by phone or create. A known member is never downgraded to 'visitor'."""
     person = Person.query.filter_by(phone=phone).first()
     if person:
+        if birth[0]:
+            person.birth_month, person.birth_day = birth
         if not (category == "visitor" and person.category in ADULT_CATEGORIES and person.category != "visitor"):
             person.category = category
             person.department = department
         person.full_name = name
         db.session.commit()
         return person, False
-    person = Person(full_name=name, phone=phone, category=category, department=department)
+    person = Person(full_name=name, phone=phone, category=category, department=department,
+                    birth_month=birth[0], birth_day=birth[1])
     db.session.add(person)
     try:
         db.session.commit()
@@ -153,10 +171,12 @@ def attendance_csv(service: Service) -> str:
 def people_csv() -> str:
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(["name", "phone", "category", "department", "age_group", "guardian", "notes", "registered"])
+    w.writerow(["name", "phone", "category", "department", "birthday", "age_group", "guardian", "notes",
+                "registered"])
     for p in Person.query.order_by(Person.full_name):
+        bday = f"{p.birth_day:02d} {calendar.month_abbr[p.birth_month]}" if p.birth_month else ""
         w.writerow([_safe(x) for x in [
-            p.full_name, p.phone or "", p.category, p.department or "", p.age_group or "",
+            p.full_name, p.phone or "", p.category, p.department or "", bday, p.age_group or "",
             p.guardian.full_name if p.guardian else "", p.notes or "", p.created_at.date().isoformat(),
         ]])
     return buf.getvalue()
@@ -179,9 +199,12 @@ def register_full(f, svc: Service, user_id: int | None = None, source: str = "se
         return None, "Please choose member, worker, minister or visitor."
     if department and department not in DEPARTMENTS:
         return None, "Please choose a department from the list."
+    bm, bd, berr = parse_birthday(f)
+    if berr:
+        return None, berr
     if category == "visitor":
         department = None
-    person, created = upsert_adult(name, phone, category, department)
+    person, created = upsert_adult(name, phone, category, department, (bm, bd))
     status = visitor_status(person, svc)
     mark_present(person, svc, user_id, source)
     kids = []

@@ -31,6 +31,8 @@
 <table>{% for c,n in by_cat.items() %}<tr><td>{{ c|capitalize }}</td><td>{{ n }}</td></tr>{% else %}<tr><td>No one yet.</td><td></td></tr>{% endfor %}</table>
 <h2>By department</h2>
 <table>{% for d,n in by_dept %}<tr><td>{{ d }}</td><td>{{ n }}</td></tr>{% else %}<tr><td>None yet.</td><td></td></tr>{% endfor %}</table>
+<h2>Birthdays in {{ month_name }}</h2>
+<table>{% for b in birthdays %}<tr><td>{{ b.full_name }}{% if b.birth_day == today_day %} <span class="pill g">today</span>{% endif %}</td><td>{{ b.birth_day }} {{ month_name[:3] }}</td></tr>{% else %}<tr><td>No birthdays recorded yet.</td><td></td></tr>{% endfor %}</table>
 <h2>Earlier services</h2>
 <table>{% for s in services %}<tr><td>{{ s.service_date.strftime('%d %b %Y') }}</td><td><a href="{{ url_for('admin.export_attendance', date=s.service_date.isoformat()) }}">Download CSV</a></td></tr>{% endfor %}</table>
 <h2>Registration QR</h2>
