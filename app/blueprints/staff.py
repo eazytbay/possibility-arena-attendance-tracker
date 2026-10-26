@@ -1,17 +1,39 @@
 import re
 from datetime import datetime, timezone
 
-from flask import Blueprint, current_app, jsonify, render_template, request, session
+from flask import (Blueprint, current_app, flash, jsonify, redirect, render_template, request,
+                   url_for)
 from sqlalchemy import or_
 
 from .. import limiter
-from ..models import AGE_GROUPS, Attendance, Person, db
+from ..models import ADULT_CATEGORIES, AGE_GROUPS, DEPARTMENTS, Attendance, Person, db
 from ..services.attendance import (assign_pickup_code, audit, get_or_create_service,
-                                   mark_present, upsert_adult, visitor_status)
+                                   mark_present, register_full, upsert_adult, visitor_status)
 from ..services.phone import normalize_phone
 from .auth import current_user, role_required
 
 bp = Blueprint("staff", __name__)
+
+
+@bp.route("/enrol", methods=["GET", "POST"])
+@role_required("usher", "media")
+def enrol():
+    """Staff-operated registration: take someone's details and mark them present."""
+    svc = get_or_create_service()
+    user = current_user()
+    form, error = {}, None
+    if request.method == "POST":
+        form = request.form
+        res, error = register_full(form, svc, user.id, "staff")
+        if not error:
+            p = res["person"]
+            audit(user.username, "enrol", f"{p.id}:{p.full_name}")
+            tag = f" ({res['status']})" if res["status"] else ""
+            flash(f"{p.full_name}{tag} is marked present." + ("" if res["created"] else " Already on record: details updated."))
+            return redirect(url_for("staff.enrol"))
+    count = Attendance.query.filter_by(service_id=svc.id).count()
+    return render_template("enrol.html", service=svc, count=count, form=form, error=error,
+                           categories=ADULT_CATEGORIES, departments=DEPARTMENTS, age_groups=AGE_GROUPS)
 
 
 @bp.get("/display")
@@ -23,7 +45,7 @@ def display():
 
 
 @bp.get("/checkin")
-@role_required("usher")
+@role_required("usher", "media")
 def checkin():
     svc = get_or_create_service()
     count = Attendance.query.filter_by(service_id=svc.id).count()
@@ -31,7 +53,7 @@ def checkin():
 
 
 @bp.get("/api/search")
-@role_required("usher")
+@role_required("usher", "media")
 def search():
     q = request.args.get("q", "").strip()
     if len(q) < 2:
@@ -51,7 +73,7 @@ def search():
 
 
 @bp.post("/api/checkin/<int:pid>")
-@role_required("usher")
+@role_required("usher", "media")
 def api_checkin(pid):
     person = db.get_or_404(Person, pid)
     if person.category == "child":
@@ -65,7 +87,7 @@ def api_checkin(pid):
 
 
 @bp.post("/api/visitor")
-@role_required("usher")
+@role_required("usher", "media")
 def api_visitor():
     data = request.get_json(silent=True) or {}
     name = " ".join(str(data.get("name", "")).split())[:120]

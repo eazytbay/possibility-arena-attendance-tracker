@@ -9,7 +9,9 @@ from zoneinfo import ZoneInfo
 from flask import current_app
 from sqlalchemy.exc import IntegrityError
 
-from ..models import ADULT_CATEGORIES, Attendance, AuditLog, Person, Service, db
+from ..models import (ADULT_CATEGORIES, AGE_GROUPS, DEPARTMENTS, Attendance, AuditLog, Person,
+                      Service, db)
+from .phone import normalize_phone
 
 log = logging.getLogger(__name__)
 
@@ -158,3 +160,37 @@ def people_csv() -> str:
             p.guardian.full_name if p.guardian else "", p.notes or "", p.created_at.date().isoformat(),
         ]])
     return buf.getvalue()
+
+
+def register_full(f, svc: Service, user_id: int | None = None, source: str = "self"):
+    """Validate one registration form, save the adult and children, mark present.
+
+    Returns (result_dict, None) on success or (None, error_message).
+    """
+    phone = normalize_phone(f.get("phone"))
+    name = " ".join(f.get("full_name", "").split())[:120]
+    category = f.get("category", "")
+    department = f.get("department") or None
+    if len(name) < 3:
+        return None, "Please enter the full name."
+    if not phone:
+        return None, "Enter a valid Nigerian mobile number, for example 08012345678."
+    if category not in ADULT_CATEGORIES:
+        return None, "Please choose member, worker, minister or visitor."
+    if department and department not in DEPARTMENTS:
+        return None, "Please choose a department from the list."
+    if category == "visitor":
+        department = None
+    person, created = upsert_adult(name, phone, category, department)
+    status = visitor_status(person, svc)
+    mark_present(person, svc, user_id, source)
+    kids = []
+    names, ages, notes = f.getlist("child_name"), f.getlist("child_age"), f.getlist("child_notes")
+    for i, cname in enumerate(names[:12]):
+        cname = " ".join(cname.split())[:120]
+        if not cname:
+            continue
+        age = ages[i] if i < len(ages) and ages[i] in AGE_GROUPS else None
+        note = (notes[i] if i < len(notes) else "").strip()[:300] or None
+        kids.append(add_child(person, cname, age, note))
+    return {"person": person, "created": created, "kids": kids or list(person.children), "status": status}, None

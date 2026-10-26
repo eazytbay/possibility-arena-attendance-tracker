@@ -173,5 +173,33 @@ def test_media_role_sees_code_only(client, app):
     page = client.get("/display").data.decode()
     assert code() in page
     assert client.get("/admin/qr.png").status_code == 200
-    for url in ("/admin/", "/admin/export/people.csv", "/checkin", "/children"):
+    for url in ("/admin/", "/admin/export/people.csv", "/children"):
         assert client.get(url).status_code == 403, url
+    assert client.get("/checkin").status_code == 200
+
+
+def test_staff_enrol_registers_and_marks_present(client):
+    login(client, "usher")
+    r = client.post("/enrol", data={"full_name": "Chidi Eze", "phone": "07011112222", "category": "visitor",
+                                    "child_name": ["Ife"], "child_age": ["6-9"], "child_notes": [""]})
+    assert r.status_code == 302
+    p = Person.query.filter_by(phone="07011112222").one()
+    att = Attendance.query.filter_by(person_id=p.id).one()
+    assert att.source == "staff" and att.checked_in_by is not None
+    assert Person.query.filter_by(category="child").one().guardian_id == p.id
+
+
+def test_staff_enrol_rejects_bad_input(client):
+    login(client, "usher")
+    assert b"valid Nigerian mobile" in client.post("/enrol", data={"full_name": "Chidi Eze", "phone": "1",
+                                                                    "category": "member"}).data
+
+
+def test_enrol_requires_login(client):
+    assert client.get("/enrol").status_code == 302
+
+
+def test_closed_public_page_hides_form(client):
+    from app.services.attendance import get_or_create_service
+    svc = get_or_create_service(); svc.registration_open = False; db.session.commit()
+    assert b"welcome team" in client.get("/register").data

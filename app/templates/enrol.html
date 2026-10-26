@@ -1,0 +1,35 @@
+{% extends "base.html" %}{% block title %}Register people{% endblock %}
+{% block nav %}{% include "_nav.html" %}{% endblock %}
+{% block hero %}<section class="hero left"><div class="in">
+<h1>Register a person</h1><p>{{ service.service_date.strftime('%A %d %B %Y') }} · <strong>{{ count }} present</strong></p></div></section>{% endblock %}
+{% block body %}<div class="sheet">
+<p class="sub">Take the person's details. They are saved and marked present. If they are already on record, search for them under Check-in instead.</p>
+{% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+<form method="post" autocomplete="off">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<label for="n" style="margin-top:0">Full name</label><input id="n" name="full_name" required autofocus value="{{ form.get('full_name','') }}">
+<label for="ph">Mobile number</label><input id="ph" name="phone" type="tel" inputmode="tel" placeholder="08012345678" required value="{{ form.get('phone','') }}">
+<label for="c">Category</label>
+<select id="c" name="category" required>
+{% for c in categories %}<option value="{{ c }}" {{ 'selected' if form.get('category')==c }}>{{ c|capitalize }}</option>{% endfor %}
+</select>
+<div id="dept"><label for="d">Department</label>
+<select id="d" name="department"><option value="">None</option>
+{% for d in departments %}<option {{ 'selected' if form.get('department')==d }}>{{ d }}</option>{% endfor %}</select></div>
+<h2>Children with them</h2>
+<div id="kids"></div>
+<button type="button" class="ghost" id="addkid">+ Add a child</button>
+<button class="full" type="submit">Save and mark present</button>
+</form></div>{% endblock %}
+{% block script %}
+<script>
+const ages={{ age_groups|tojson }};
+function addKid(){const d=document.createElement('div');d.className='child-row';
+d.innerHTML=`<label>Child's name</label><input name="child_name" maxlength="120">
+<label>Age group</label><select name="child_age"><option value="">Choose</option>${ages.map(a=>`<option>${a}</option>`).join('')}</select>
+<label>Allergies or notes</label><input name="child_notes" maxlength="300">`;document.getElementById('kids').appendChild(d)}
+document.getElementById('addkid').onclick=addKid;
+const cat=document.getElementById('c'),dept=document.getElementById('dept');
+function sync(){dept.style.display=cat.value==='visitor'?'none':''}cat.onchange=sync;sync();
+</script>
+{% endblock %}
