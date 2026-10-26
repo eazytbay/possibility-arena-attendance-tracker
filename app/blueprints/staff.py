@@ -9,7 +9,7 @@ from sqlalchemy import or_
 
 from .. import limiter
 from ..models import AGE_GROUPS, DEPARTMENTS, MONTHS, REGISTER_CATEGORIES, SEXES, Attendance, Person, db
-from ..services.attendance import (assign_pickup_code, audit, get_or_create_service,
+from ..services.attendance import (assign_pickup_code, needs_pickup_code, audit, get_or_create_service,
                                    mark_present, register_full, upsert_adult, visitor_status)
 from ..services.phone import normalize_phone
 from ..services.photos import process_photo
@@ -156,7 +156,8 @@ def children():
                      "guardian": k.guardian.full_name if k.guardian else "",
                      "guardian_present": g_present,
                      "state": "released" if a and a.released_at else "in" if a else "out",
-                     "code": a.pickup_code if a and not a.released_at else ""})
+                     "code": a.pickup_code if a and not a.released_at else "",
+                     "needs_code": needs_pickup_code(k)})
     rows.sort(key=lambda r: (not r["guardian_present"], r["name"]))
     ages = {}
     for r in rows:
@@ -177,7 +178,7 @@ def child_checkin(pid):
     code = assign_pickup_code(att)
     if created:
         audit(user.username, "child_checkin", f"{child.id}:{child.full_name}")
-    return jsonify(ok=True, code=code)
+    return jsonify(ok=True, code=code, needs_code=bool(code))
 
 
 @bp.post("/api/children/release")

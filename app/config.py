@@ -13,6 +13,8 @@ class Config:
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "false").lower() == "true"
     RATELIMIT_STORAGE_URI = "memory://"
+    # Only these age groups get a pickup code. Older children check in without one.
+    PICKUP_CODE_AGE_GROUPS = tuple(a.strip() for a in os.environ.get("PICKUP_CODE_AGE_GROUPS", "0-2,3-5").split(",") if a.strip())
     # A visitor becomes a member automatically on this many Sundays attended (0 = never).
     VISITOR_PROMOTE_AFTER = int(os.environ.get("VISITOR_PROMOTE_AFTER", "4"))
     # SMS greetings. Nothing is sent unless SMS_ENABLED=true and a token is set.

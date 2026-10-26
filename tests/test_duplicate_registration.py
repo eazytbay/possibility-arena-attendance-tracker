@@ -90,3 +90,17 @@ def test_children_page_shows_totals_and_age_filters(client):
     lg(c2, "kids")
     page = c2.get("/children").data.decode()
     assert "2</strong> children on record" in page and "3-5 (1)" in page and "6-9 (1)" in page
+
+
+def test_pickup_code_only_for_ages_zero_to_five(client):
+    login(client, "usher")
+    enrol(client, child_name=["Tiny", "Mid", "Big", "Unknown"], child_age=["0-2", "3-5", "6-9", ""], child_notes=["", "", "", ""])
+    login(client, "kids")
+    out = {k.full_name: client.post(f"/api/children/{k.id}/checkin").get_json()
+           for k in Person.query.filter_by(category="child")}
+    assert len(out["Tiny"]["code"]) == 4 and len(out["Mid"]["code"]) == 4 and len(out["Unknown"]["code"]) == 4
+    assert out["Big"]["code"] == "" and out["Big"]["needs_code"] is False
+    a = Attendance.query.join(Person).filter(Person.full_name == "Big").one()
+    assert a.pickup_code is None
+    page = client.get("/children").data.decode()
+    assert "no pickup code needed" in page

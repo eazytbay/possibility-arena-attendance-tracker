@@ -4,6 +4,7 @@
 <h1>Children's ministry</h1><p>{{ service.service_date.strftime('%A %d %B %Y') }} · parents who are present are listed first</p></div></section>{% endblock %}
 {% block body %}<div class="sheet">
 <h2>Release a child</h2>
+<p class="sub">Pickup codes are for children aged 0-5. Older children check in without a code.</p>
 <div class="card"><label for="rc" style="margin-top:0">Pickup code from the guardian</label>
 <input id="rc" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="4 digits">
 <button class="full" id="rel" type="button">Release child</button><div id="rmsg" role="status" style="margin-top:10px"></div></div>
@@ -17,7 +18,7 @@
 <div><strong>{{ r.name }}</strong> <span class="pill">{{ r.age or 'age ?' }}</span>{% if r.guardian_present %}<span class="pill g">parent present</span>{% endif %}<br>
 <span class="sub">Parent: {{ r.guardian or 'unknown' }}</span>
 {% if r.notes %}<br><span class="pill r">Note: {{ r.notes }}</span>{% endif %}
-{% if r.state == 'in' %}<br><span class="code">{{ r.code }}</span>{% elif r.state == 'released' %}<br><span class="pill">Released</span>{% endif %}</div>
+{% if r.state == 'in' %}<br>{% if r.code %}<span class="code">{{ r.code }}</span>{% else %}<span class="pill g">Checked in · no pickup code needed</span>{% endif %}{% elif r.state == 'released' %}<br><span class="pill">Released</span>{% endif %}</div>
 {% if r.state == 'out' %}<button data-id="{{ r.id }}">Check in</button>{% endif %}
 </div>{% else %}<p class="sub">No children registered yet.</p>{% endfor %}
 </div></div>{% endblock %}
@@ -28,7 +29,7 @@ function applyFilter(){const v=document.getElementById('f').value.toLowerCase();
 document.getElementById('f').oninput=applyFilter;
 document.getElementById('chips').onclick=e=>{const b=e.target.closest('button[data-age]');if(!b)return;ageSel=b.dataset.age;applyFilter()};
 document.getElementById('list').onclick=async e=>{const b=e.target.closest('button[data-id]');if(!b)return;b.disabled=true;
-const {ok,data}=await post('/api/children/'+b.dataset.id+'/checkin');if(ok){b.outerHTML='<span class="code">'+data.code+'</span>'}else{b.disabled=false;alert(data.error||'Failed')}};
+const {ok,data}=await post('/api/children/'+b.dataset.id+'/checkin');if(ok){b.outerHTML=data.code?'<span class="code">'+data.code+'</span>':'<span class="pill g">Checked in · no pickup code needed</span>'}else{b.disabled=false;alert(data.error||'Failed')}};
 document.getElementById('rel').onclick=async()=>{const {ok,data}=await post('/api/children/release',{code:document.getElementById('rc').value});
 const m=document.getElementById('rmsg');m.className=ok?'note':'error';m.textContent=ok?`Release ${data.child} to ${data.guardian||'guardian'}.`:data.error;if(ok)document.getElementById('rc').value=''};
 </script>

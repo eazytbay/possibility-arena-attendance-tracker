@@ -159,9 +159,17 @@ def add_child(guardian: Person, name: str, age_group: str | None, notes: str | N
     return child
 
 
+def needs_pickup_code(child: Person) -> bool:
+    """Young children (0-5 by default) are handed back only against a code. An unknown age counts as young."""
+    groups = current_app.config.get("PICKUP_CODE_AGE_GROUPS", ("0-2", "3-5"))
+    return not child.age_group or child.age_group in groups
+
+
 def assign_pickup_code(att: Attendance) -> str:
     if att.pickup_code:
         return att.pickup_code
+    if not needs_pickup_code(att.person):
+        return ""
     used = {a.pickup_code for a in Attendance.query.filter_by(service_id=att.service_id) if a.pickup_code}
     while True:
         code = f"{secrets.randbelow(10000):04d}"
