@@ -10,8 +10,8 @@ from zoneinfo import ZoneInfo
 from flask import current_app
 from sqlalchemy.exc import IntegrityError
 
-from ..models import (ADULT_CATEGORIES, AGE_GROUPS, DEPARTMENTS, Attendance, AuditLog, Person,
-                      Service, db)
+from ..models import (ADULT_CATEGORIES, AGE_GROUPS, CATEGORIES, DEPARTMENTS, REGISTER_CATEGORIES, SEXES,
+                      Attendance, AuditLog, Person, Service, db)
 from .phone import normalize_phone
 
 log = logging.getLogger(__name__)
@@ -85,12 +85,22 @@ def parse_birthday(f):
     return mi, di, None
 
 
-def upsert_adult(name: str, phone: str, category: str, department: str | None, birth=(None, None)):
-    """Find by phone or create. A known member is never downgraded to 'visitor'."""
-    person = Person.query.filter_by(phone=phone).first()
+def upsert_adult(name: str, phone: str | None, category: str, department: str | None,
+                 birth=(None, None), sex: str | None = None):
+    """Find by phone (or by exact name for a teen without a phone) or create.
+
+    A known member is never downgraded to 'visitor'.
+    """
+    if phone:
+        person = Person.query.filter_by(phone=phone).first()
+    else:
+        person = Person.query.filter(db.func.lower(Person.full_name) == name.lower(),
+                                     Person.category == "teen", Person.phone.is_(None)).first()
     if person:
         if birth[0]:
             person.birth_month, person.birth_day = birth
+        if sex:
+            person.sex = sex
         if not (category == "visitor" and person.category in ADULT_CATEGORIES and person.category != "visitor"):
             person.category = category
             person.department = department
@@ -98,7 +108,7 @@ def upsert_adult(name: str, phone: str, category: str, department: str | None, b
         db.session.commit()
         return person, False
     person = Person(full_name=name, phone=phone, category=category, department=department,
-                    birth_month=birth[0], birth_day=birth[1])
+                    birth_month=birth[0], birth_day=birth[1], sex=sex)
     db.session.add(person)
     try:
         db.session.commit()
@@ -150,17 +160,24 @@ def _safe(cell) -> str:
     return "'" + s if s[:1] in ("=", "+", "-", "@") else s
 
 
-def attendance_csv(service: Service) -> str:
+def _match(person: Person, flt: dict) -> bool:
+    return all(not v or getattr(person, k) == v for k, v in flt.items())
+
+
+def attendance_csv(service: Service, flt: dict | None = None) -> str:
     tz = ZoneInfo(current_app.config["TIMEZONE"])
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(["service_date", "name", "phone", "category", "department", "visitor_status",
+    w.writerow(["service_date", "name", "phone", "category", "department", "sex", "visitor_status",
                 "guardian", "age_group", "source", "checked_in_at", "released_at"])
     rows = Attendance.query.filter_by(service_id=service.id).order_by(Attendance.checked_in_at).all()
     for a in rows:
         p = a.person
+        if flt and not _match(p, flt):
+            continue
         w.writerow([_safe(x) for x in [
             service.service_date.isoformat(), p.full_name, p.phone or "", p.category, p.department or "",
+            p.sex or "",
             visitor_status(p, service), p.guardian.full_name if p.guardian else "", p.age_group or "",
             a.source, a.checked_in_at.astimezone(tz).strftime("%H:%M"),
             a.released_at.astimezone(tz).strftime("%H:%M") if a.released_at else "",
@@ -168,15 +185,32 @@ def attendance_csv(service: Service) -> str:
     return buf.getvalue()
 
 
-def people_csv() -> str:
+def filter_people(args):
+    """Build the People query from request args: category, department, sex, month, q."""
+    q = Person.query
+    if args.get("category") in CATEGORIES:
+        q = q.filter(Person.category == args["category"])
+    if args.get("department") in DEPARTMENTS:
+        q = q.filter(Person.department == args["department"])
+    if args.get("sex") in SEXES:
+        q = q.filter(Person.sex == args["sex"])
+    if (args.get("month") or "").isdigit() and 1 <= int(args["month"]) <= 12:
+        q = q.filter(Person.birth_month == int(args["month"]))
+    text = (args.get("q") or "").strip()
+    if text:
+        q = q.filter(Person.full_name.ilike(f"%{text}%"))
+    return q.order_by(Person.full_name)
+
+
+def people_csv(people=None) -> str:
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(["name", "phone", "category", "department", "birthday", "age_group", "guardian", "notes",
+    w.writerow(["name", "phone", "category", "department", "sex", "birthday", "age_group", "guardian", "notes",
                 "registered"])
-    for p in Person.query.order_by(Person.full_name):
+    for p in (people if people is not None else Person.query.order_by(Person.full_name)):
         bday = f"{p.birth_day:02d} {calendar.month_abbr[p.birth_month]}" if p.birth_month else ""
         w.writerow([_safe(x) for x in [
-            p.full_name, p.phone or "", p.category, p.department or "", bday, p.age_group or "",
+            p.full_name, p.phone or "", p.category, p.department or "", p.sex or "", bday, p.age_group or "",
             p.guardian.full_name if p.guardian else "", p.notes or "", p.created_at.date().isoformat(),
         ]])
     return buf.getvalue()
@@ -187,24 +221,28 @@ def register_full(f, svc: Service, user_id: int | None = None, source: str = "se
 
     Returns (result_dict, None) on success or (None, error_message).
     """
-    phone = normalize_phone(f.get("phone"))
+    raw_phone = (f.get("phone") or "").strip()
+    phone = normalize_phone(raw_phone) if raw_phone else None
     name = " ".join(f.get("full_name", "").split())[:120]
     category = f.get("category", "")
     department = f.get("department") or None
+    sex = f.get("sex") or None
     if len(name) < 3:
         return None, "Please enter the full name."
-    if not phone:
+    if category not in REGISTER_CATEGORIES:
+        return None, "Please choose member, worker, minister, teen or visitor."
+    if not phone and not (category == "teen" and not raw_phone):
         return None, "Enter a valid Nigerian mobile number, for example 08012345678."
-    if category not in ADULT_CATEGORIES:
-        return None, "Please choose member, worker, minister or visitor."
     if department and department not in DEPARTMENTS:
         return None, "Please choose a department from the list."
+    if sex and sex not in SEXES:
+        return None, "Please choose male or female."
     bm, bd, berr = parse_birthday(f)
     if berr:
         return None, berr
     if category == "visitor":
         department = None
-    person, created = upsert_adult(name, phone, category, department, (bm, bd))
+    person, created = upsert_adult(name, phone, category, department, (bm, bd), sex)
     if photo:
         person.photo, person.has_photo = photo, True
         db.session.commit()
@@ -227,14 +265,14 @@ def attendance_all_csv() -> str:
     tz = ZoneInfo(current_app.config["TIMEZONE"])
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(["service_date", "name", "phone", "category", "department", "guardian", "age_group",
+    w.writerow(["service_date", "name", "phone", "category", "department", "sex", "guardian", "age_group",
                 "source", "checked_in_at"])
     rows = (Attendance.query.join(Service).order_by(Service.service_date, Attendance.checked_in_at).all())
     for a in rows:
         p = a.person
         w.writerow([_safe(x) for x in [
             a.service.service_date.isoformat(), p.full_name, p.phone or "", p.category, p.department or "",
-            p.guardian.full_name if p.guardian else "", p.age_group or "", a.source,
+            p.sex or "", p.guardian.full_name if p.guardian else "", p.age_group or "", a.source,
             a.checked_in_at.astimezone(tz).strftime("%H:%M"),
         ]])
     return buf.getvalue()

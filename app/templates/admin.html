@@ -14,6 +14,7 @@
 </div></div>
 <div class="btn-row" style="margin-bottom:14px"><a class="btn" href="{{ url_for('staff.enrol') }}">Register a person</a>
 <a class="btn ghost" href="{{ url_for('staff.checkin') }}">Check-in (search)</a>
+<a class="btn ghost" href="{{ url_for('admin.people') }}">People (filter)</a>
 <a class="btn ghost" href="{{ url_for('staff.display') }}">Screen display</a>
 {% if me and me.role == 'owner' %}<a class="btn ghost" href="{{ url_for('admin.team') }}">Team logins</a>{% endif %}</div>
 <div class="stats">
@@ -26,7 +27,10 @@
 <a class="btn ghost" href="{{ url_for('admin.export_all_attendance') }}">All attendance, every date (CSV)</a></div>
 <form method="get" action="{{ url_for('admin.export_attendance') }}" class="card" style="margin-top:14px">
 <label for="dt" style="margin-top:0">Attendance for a particular date</label>
-<div class="row"><input id="dt" type="date" name="date" required style="flex:1"><button type="submit">Download</button></div></form>
+<input id="dt" type="date" name="date" required>
+<div class="row" style="margin-top:10px"><select name="category" aria-label="Category"><option value="">Everyone</option>{% for c in ['member','worker','minister','teen','visitor','child'] %}<option value="{{ c }}">{{ c|capitalize }}s only</option>{% endfor %}</select>
+<select name="sex" aria-label="Sex"><option value="">Any sex</option><option value="male">Male</option><option value="female">Female</option></select></div>
+<button class="full" type="submit">Download</button></form>
 <h2>By category</h2>
 <table>{% for c,n in by_cat.items() %}<tr><td>{{ c|capitalize }}</td><td>{{ n }}</td></tr>{% else %}<tr><td>No one yet.</td><td></td></tr>{% endfor %}</table>
 <h2>By department</h2>

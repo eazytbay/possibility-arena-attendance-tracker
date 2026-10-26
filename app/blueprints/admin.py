@@ -10,9 +10,9 @@ import re
 
 from werkzeug.security import generate_password_hash
 
-from ..models import ROLES, Attendance, Person, Service, User, db
+from ..models import CATEGORIES, DEPARTMENTS, MONTHS, ROLES, SEXES, Attendance, Person, Service, User, db
 from ..services.attendance import (attendance_all_csv, attendance_csv, audit, get_or_create_service, new_access_code,
-                                   people_csv, visitor_status)
+                                   filter_people, people_csv, visitor_status)
 from .auth import current_user, owner_required, role_required
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -81,8 +81,11 @@ def export_attendance():
     if not svc:
         flash(f"No attendance was recorded on {d.strftime('%d %B %Y')}.")
         return redirect(url_for("admin.dashboard"))
+    flt = {"category": request.args.get("category") if request.args.get("category") in CATEGORIES else None,
+           "department": request.args.get("department") if request.args.get("department") in DEPARTMENTS else None,
+           "sex": request.args.get("sex") if request.args.get("sex") in SEXES else None}
     audit(current_user().username, "export_attendance", d.isoformat())
-    return _csv_response(attendance_csv(svc), f"attendance-{d.isoformat()}.csv")
+    return _csv_response(attendance_csv(svc, flt), f"attendance-{d.isoformat()}.csv")
 
 
 @bp.get("/export/all-attendance.csv")
@@ -95,8 +98,17 @@ def export_all_attendance():
 @bp.get("/export/people.csv")
 @role_required()
 def export_people():
-    audit(current_user().username, "export_people")
-    return _csv_response(people_csv(), "people.csv")
+    audit(current_user().username, "export_people", request.query_string.decode()[:200])
+    return _csv_response(people_csv(filter_people(request.args).all()), "people.csv")
+
+
+@bp.get("/people")
+@role_required()
+def people():
+    rows = filter_people(request.args).limit(600).all()
+    return render_template("people.html", rows=rows, args=request.args, categories=CATEGORIES,
+                           departments=DEPARTMENTS, sexes=SEXES, months=MONTHS,
+                           query=request.query_string.decode())
 
 
 @bp.get("/qr.png")

@@ -5,13 +5,15 @@ from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy()
 
 ADULT_CATEGORIES = ("member", "worker", "minister", "visitor")
-CATEGORIES = ADULT_CATEGORIES + ("child",)
+REGISTER_CATEGORIES = ("member", "worker", "minister", "teen", "visitor")  # who staff can register
+CATEGORIES = REGISTER_CATEGORIES + ("child",)
+SEXES = ("male", "female")
 DEPARTMENTS = (
     "Choir", "Ushers", "Protocol", "Media", "Sanitation", "Welfare",
     "Intercessors", "Technical", "Counsellors", "Sunday School",
 )
 ROLES = ("owner", "admin", "media", "usher", "children")
-AGE_GROUPS = ("0-2", "3-5", "6-9", "10-12", "13-17")
+AGE_GROUPS = ("0-2", "3-5", "6-9", "10-12")  # children; 13 and over register as teens
 MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August", "September",
           "October", "November", "December")
 
@@ -27,6 +29,7 @@ class Person(db.Model):
     phone = db.Column(db.String(15), unique=True, nullable=True)
     category = db.Column(db.String(12), nullable=False)
     department = db.Column(db.String(40), nullable=True)
+    sex = db.Column(db.String(6), nullable=True)
     age_group = db.Column(db.String(8), nullable=True)
     notes = db.Column(db.String(300), nullable=True)
     birth_month = db.Column(db.SmallInteger, nullable=True)  # day and month only, never the year
