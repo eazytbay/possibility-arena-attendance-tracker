@@ -15,6 +15,9 @@ class Config:
     RATELIMIT_STORAGE_URI = "memory://"
     # Only these age groups get a pickup code. Older children check in without one.
     PICKUP_CODE_AGE_GROUPS = tuple(a.strip() for a in os.environ.get("PICKUP_CODE_AGE_GROUPS", "0-2,3-5").split(",") if a.strip())
+    # Absence lists: a "regular" came at least once in the last ABSENT_LOOKBACK Sundays.
+    ABSENT_LOOKBACK = int(os.environ.get("ABSENT_LOOKBACK", "8"))
+    MISSED_IN_A_ROW = int(os.environ.get("MISSED_IN_A_ROW", "3"))
     # A visitor becomes a member automatically on this many Sundays attended (0 = never).
     VISITOR_PROMOTE_AFTER = int(os.environ.get("VISITOR_PROMOTE_AFTER", "4"))
     # SMS greetings. Nothing is sent unless SMS_ENABLED=true and a token is set.

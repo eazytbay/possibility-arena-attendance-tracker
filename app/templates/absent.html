@@ -1,0 +1,19 @@
+{% extends "base.html" %}{% block title %}Absent{% endblock %}
+{% block nav %}{% include "_nav.html" %}{% endblock %}
+{% block mainclass %}wide{% endblock %}
+{% block hero %}<section class="hero left"><div class="in"><h1>Who was absent</h1><p>Regulars to follow up</p></div></section>{% endblock %}
+{% block body %}<div class="sheet">
+<form method="get" class="card">
+<label for="fd" style="margin-top:0">Sunday</label>
+<select id="fd" name="date">{% for s in sundays %}<option value="{{ s.service_date.isoformat() }}" {{ 'selected' if s.service_date==day }}>{{ s.service_date.strftime('%a %d %b %Y') }}</option>{% else %}<option value="">No Sundays yet</option>{% endfor %}</select>
+<label for="fm">Show</label>
+<select id="fm" name="mode"><option value="one" {{ 'selected' if mode=='one' }}>Absent on this Sunday</option><option value="streak" {{ 'selected' if mode=='streak' }}>Missed the last {{ n }} Sundays in a row</option></select>
+<button class="full" type="submit">Show list</button></form>
+<p class="sub">A regular is someone who came at least once in the {{ lookback }} Sundays before. Children and first-time visitors are not listed.</p>
+{% if note %}<div class="error" role="status">{{ note }}</div>{% else %}
+<div class="row" style="margin:14px 0"><strong>{{ rows|length }} {{ 'person' if rows|length == 1 else 'people' }}</strong>
+<a class="btn ghost" href="{{ url_for('admin.export_absent') }}?{{ query }}">Download this list (CSV)</a></div>
+<table>{% for r in rows %}<tr><td><strong>{{ r.person.full_name }}</strong><br><span class="pill">{{ r.person.category }}</span>{% if r.person.department %}<span class="pill g">{{ r.person.department }}</span>{% endif %}</td>
+<td style="font-weight:400"><span class="sub">{{ r.person.phone or 'no phone' }}</span><br><span class="sub">Last seen {{ r.last_seen.strftime('%d %b %Y') if r.last_seen else 'never' }} · came {{ r.recent_sundays }} of last {{ lookback }}</span></td></tr>
+{% else %}<tr><td>No one to follow up. Everyone who is a regular was here.</td><td></td></tr>{% endfor %}</table>{% endif %}
+</div>{% endblock %}

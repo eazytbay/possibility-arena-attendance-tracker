@@ -11,6 +11,7 @@ import re
 from werkzeug.security import generate_password_hash
 
 from ..models import CATEGORIES, DEPARTMENTS, MONTHS, ROLES, SEXES, Attendance, Person, Service, User, db
+from ..services.absence import absent_csv, absent_on, missed_in_a_row, sundays_held
 from ..services.attendance import (attendance_all_csv, attendance_csv, audit, get_or_create_service, new_access_code,
                                    filter_people, people_csv, visit_counts, visitor_status)
 from .auth import current_user, owner_required, role_required
@@ -196,3 +197,31 @@ def team_password(uid):
         audit(current_user().username, "team_password", user.username)
         flash(f"Password changed for '{user.username}'.")
     return redirect(url_for("admin.team"))
+
+
+def _absence_args():
+    sundays = sundays_held()
+    try:
+        day = date.fromisoformat(request.args.get("date", ""))
+    except ValueError:
+        day = sundays[-1].service_date if sundays else date.today()
+    mode = "streak" if request.args.get("mode") == "streak" else "one"
+    rows, note = missed_in_a_row(day) if mode == "streak" else absent_on(day)
+    return sundays, day, mode, rows, note
+
+
+@bp.get("/absent")
+@role_required()
+def absent():
+    sundays, day, mode, rows, note = _absence_args()
+    return render_template("absent.html", sundays=list(reversed(sundays)), day=day, mode=mode, rows=rows, note=note,
+                           lookback=current_app.config["ABSENT_LOOKBACK"], n=current_app.config["MISSED_IN_A_ROW"],
+                           query=request.query_string.decode())
+
+
+@bp.get("/export/absent.csv")
+@role_required()
+def export_absent():
+    _, day, mode, rows, _ = _absence_args()
+    audit(current_user().username, "export_absent", f"{mode}:{day.isoformat()}")
+    return _csv_response(absent_csv(rows), f"absent-{mode}-{day.isoformat()}.csv")
