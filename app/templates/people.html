@@ -13,7 +13,7 @@
 <button class="full" type="submit">Apply filters</button></form>
 <div class="row" style="margin:14px 0"><strong>{{ rows|length }} {{ 'person' if rows|length == 1 else 'people' }}</strong>
 <a class="btn ghost" href="{{ url_for('admin.export_people') }}?{{ query }}">Download this list (CSV)</a></div>
-<table>{% for p in rows %}<tr><td><strong>{{ p.full_name }}</strong><br><span class="pill">{{ p.category }}</span>{% if p.department %}<span class="pill g">{{ p.department }}</span>{% endif %}{% if p.sex %}<span class="pill">{{ p.sex }}</span>{% endif %}{% if visits.get(p.id) %}<span class="pill">{{ visits[p.id] }} {{ 'Sunday' if visits[p.id]==1 else 'Sundays' }} as visitor</span>{% endif %}</td>
+<table>{% for p in rows %}<tr><td><strong><a href="{{ url_for('admin.edit_person', pid=p.id) }}">{{ p.full_name }}</a></strong><br><span class="pill">{{ p.category }}</span>{% if p.department %}<span class="pill g">{{ p.department }}</span>{% endif %}{% if p.sex %}<span class="pill">{{ p.sex }}</span>{% endif %}{% if visits.get(p.id) %}<span class="pill">{{ visits[p.id] }} {{ 'Sunday' if visits[p.id]==1 else 'Sundays' }} as visitor</span>{% endif %}</td>
 <td style="font-weight:400">{% if p.birth_month %}{{ p.birth_day }} {{ months[p.birth_month-1][:3] }}<br>{% endif %}<span class="sub">{{ p.phone or '' }}</span></td></tr>
 {% else %}<tr><td>No one matches these filters.</td><td></td></tr>{% endfor %}</table>
 </div>{% endblock %}

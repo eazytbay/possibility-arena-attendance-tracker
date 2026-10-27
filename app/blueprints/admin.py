@@ -10,10 +10,12 @@ import re
 
 from werkzeug.security import generate_password_hash
 
-from ..models import CATEGORIES, DEPARTMENTS, MONTHS, ROLES, SEXES, Attendance, Person, Service, User, db
+from ..models import AGE_GROUPS, CATEGORIES, DEPARTMENTS, REGISTER_CATEGORIES, MONTHS, ROLES, SEXES, Attendance, Person, Service, User, db
 from ..services.absence import absent_csv, absent_on, missed_in_a_row, sundays_held
-from ..services.attendance import (attendance_all_csv, attendance_csv, audit, get_or_create_service, new_access_code,
+from ..services.attendance import (parse_birthday, attendance_all_csv, attendance_csv, audit, get_or_create_service, new_access_code,
                                    filter_people, people_csv, visit_counts, visitor_status)
+from ..services.phone import normalize_phone
+from ..services.photos import process_photo
 from .auth import current_user, owner_required, role_required
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -225,3 +227,69 @@ def export_absent():
     _, day, mode, rows, _ = _absence_args()
     audit(current_user().username, "export_absent", f"{mode}:{day.isoformat()}")
     return _csv_response(absent_csv(rows), f"absent-{mode}-{day.isoformat()}.csv")
+
+
+@bp.route("/person/<int:pid>/edit", methods=["GET", "POST"])
+@role_required("media")
+def edit_person(pid):
+    """Change what is on record for one person: details, photo, birthday and greeting messages."""
+    person = db.get_or_404(Person, pid)
+    is_child = person.category == "child"
+    error = None
+    if request.method == "POST":
+        f = request.form
+        name = " ".join(f.get("full_name", "").split())[:120]
+        if len(name) < 3:
+            error = "Please enter the full name."
+        elif is_child:
+            age = f.get("age_group") or None
+            if age and age not in AGE_GROUPS:
+                error = "Please choose an age group from the list."
+            else:
+                person.full_name, person.age_group = name, age
+                person.notes = (f.get("notes") or "").strip()[:300] or None
+        else:
+            category = f.get("category", "")
+            raw_phone = (f.get("phone") or "").strip()
+            phone = normalize_phone(raw_phone) if raw_phone else None
+            department = f.get("department") or None
+            sex = f.get("sex") or None
+            bm, bd, berr = parse_birthday(f)
+            if category not in REGISTER_CATEGORIES:
+                error = "Please choose a category."
+            elif not phone and not (category == "teen" and not raw_phone):
+                error = "Enter a valid Nigerian mobile number, for example 08012345678."
+            elif department and department not in DEPARTMENTS:
+                error = "Please choose a department from the list."
+            elif sex and sex not in SEXES:
+                error = "Please choose male or female."
+            elif berr:
+                error = berr
+            else:
+                other = Person.query.filter(Person.phone == phone, Person.id != person.id).first() if phone else None
+                if other:
+                    error = f"That number already belongs to {other.full_name}. Each person needs their own number."
+            photo = None
+            if not error:
+                try:
+                    photo = process_photo(request.files.get("photo"))
+                except ValueError as exc:
+                    error = str(exc)
+            if not error:
+                person.full_name, person.phone, person.category = name, phone, category
+                person.department = None if category == "visitor" else department
+                person.sex, person.birth_month, person.birth_day = sex, bm, bd
+                person.sms_opt_in = f.get("sms_opt_in") == "1"
+                if f.get("remove_photo") == "1":
+                    person.photo, person.has_photo = None, False
+                if photo:
+                    person.photo, person.has_photo = photo, True
+        if not error:
+            db.session.commit()
+            audit(current_user().username, "edit_person", f"{person.id}:{person.full_name}")
+            flash(f"{person.full_name} was updated.")
+            return redirect(url_for("admin.people"))
+        db.session.rollback()
+    return render_template("person_edit.html", p=person, is_child=is_child, error=error, form=request.form,
+                           categories=REGISTER_CATEGORIES, sexes=SEXES, departments=DEPARTMENTS,
+                           age_groups=AGE_GROUPS, months=MONTHS)

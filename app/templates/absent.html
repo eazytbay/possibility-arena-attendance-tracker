@@ -13,7 +13,7 @@
 {% if note %}<div class="error" role="status">{{ note }}</div>{% else %}
 <div class="row" style="margin:14px 0"><strong>{{ rows|length }} {{ 'person' if rows|length == 1 else 'people' }}</strong>
 <a class="btn ghost" href="{{ url_for('admin.export_absent') }}?{{ query }}">Download this list (CSV)</a></div>
-<table>{% for r in rows %}<tr><td><strong>{{ r.person.full_name }}</strong><br><span class="pill">{{ r.person.category }}</span>{% if r.person.department %}<span class="pill g">{{ r.person.department }}</span>{% endif %}</td>
+<table>{% for r in rows %}<tr><td><strong><a href="{{ url_for('admin.edit_person', pid=r.person.id) }}">{{ r.person.full_name }}</a></strong><br><span class="pill">{{ r.person.category }}</span>{% if r.person.department %}<span class="pill g">{{ r.person.department }}</span>{% endif %}</td>
 <td style="font-weight:400"><span class="sub">{{ r.person.phone or 'no phone' }}</span><br><span class="sub">Last seen {{ r.last_seen.strftime('%d %b %Y') if r.last_seen else 'never' }} · came {{ r.recent_sundays }} of last {{ lookback }}</span></td></tr>
 {% else %}<tr><td>No one to follow up. Everyone who is a regular was here.</td><td></td></tr>{% endfor %}</table>{% endif %}
 </div>{% endblock %}

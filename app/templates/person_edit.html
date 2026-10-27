@@ -1,0 +1,44 @@
+{% extends "base.html" %}{% block title %}Edit person{% endblock %}
+{% block nav %}{% include "_nav.html" %}{% endblock %}
+{% block hero %}<section class="hero left"><div class="in"><h1>Edit {{ p.full_name }}</h1><p>Changes are saved to their record. Attendance is not changed.</p></div></section>{% endblock %}
+{% block body %}<div class="sheet">
+{% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+{% set v = form if form else {} %}
+<form method="post" autocomplete="off" enctype="multipart/form-data">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<label for="n" style="margin-top:0">Full name</label><input id="n" name="full_name" required value="{{ v.get('full_name', p.full_name) }}">
+{% if is_child %}
+<p class="sub">Parent: {{ p.guardian.full_name if p.guardian else 'unknown' }}</p>
+<label for="ag">Age group</label>
+<select id="ag" name="age_group"><option value="">Not known</option>{% for a in age_groups %}<option {{ 'selected' if v.get('age_group', p.age_group)==a }}>{{ a }}</option>{% endfor %}</select>
+<label for="nt">Allergies or notes</label><input id="nt" name="notes" maxlength="300" value="{{ v.get('notes', p.notes or '') }}">
+{% else %}
+<label for="ph">Mobile number</label><input id="ph" name="phone" type="tel" inputmode="tel" placeholder="08012345678" value="{{ v.get('phone', p.phone or '') }}">
+<p class="sub" style="margin:6px 0 0">Each person needs their own number. A teen without a phone can be left empty.</p>
+<label for="c">Category</label>
+<select id="c" name="category">{% for c in categories %}<option value="{{ c }}" {{ 'selected' if v.get('category', p.category)==c }}>{{ c|capitalize }}</option>{% endfor %}</select>
+<label for="sx">Sex</label>
+<select id="sx" name="sex"><option value="">Not known</option>{% for x in sexes %}<option value="{{ x }}" {{ 'selected' if v.get('sex', p.sex)==x }}>{{ x|capitalize }}</option>{% endfor %}</select>
+<label for="bm">Birthday (no year)</label>
+<div class="row"><select id="bm" name="birth_month" aria-label="Birth month"><option value="">Month</option>{% for m in months %}<option value="{{ loop.index }}" {{ 'selected' if (v.get('birth_month', p.birth_month|string if p.birth_month else ''))==loop.index|string }}>{{ m }}</option>{% endfor %}</select>
+<select name="birth_day" aria-label="Birth day"><option value="">Day</option>{% for d in range(1,32) %}<option value="{{ d }}" {{ 'selected' if (v.get('birth_day', p.birth_day|string if p.birth_day else ''))==d|string }}>{{ d }}</option>{% endfor %}</select></div>
+<label for="d">Department</label>
+<select id="d" name="department"><option value="">None</option>{% for d in departments %}<option {{ 'selected' if v.get('department', p.department)==d }}>{{ d }}</option>{% endfor %}</select>
+<label for="ph2">Photo</label>
+{% if p.has_photo %}<p><img src="{{ url_for('staff.photo', pid=p.id) }}" alt="Current photo of {{ p.full_name }}" width="96" height="96" style="border-radius:8px"></p>
+<label style="font-weight:400"><input type="checkbox" name="remove_photo" value="1"> Remove this photo</label>{% endif %}
+<input id="ph2" name="photo" type="file" accept="image/*">
+<p class="sub" style="margin:6px 0 0">Choose a new picture to {{ 'replace the current one' if p.has_photo else 'add one' }}. It is shrunk to a small thumbnail.</p>
+<label style="font-weight:400;margin-top:16px"><input type="checkbox" name="sms_opt_in" value="1" {{ 'checked' if (v.get('sms_opt_in') == '1' if form else p.sms_opt_in) }}> Send this person birthday, new month and holiday greetings by SMS</label>
+{% endif %}
+<button class="full" type="submit">Save changes</button>
+<a class="btn ghost" href="{{ url_for('admin.people') }}" style="margin-top:10px">Cancel</a>
+</form></div>{% endblock %}
+{% block script %}
+<script>
+const f=document.getElementById('ph2');if(f)f.addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;
+try{const bmp=await createImageBitmap(file);const s=Math.min(bmp.width,bmp.height),c=document.createElement('canvas');c.width=c.height=240;
+c.getContext('2d').drawImage(bmp,(bmp.width-s)/2,(bmp.height-s)/2,s,s,0,0,240,240);
+const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.7));const dt=new DataTransfer();dt.items.add(new File([blob],'photo.jpg',{type:'image/jpeg'}));e.target.files=dt.files}catch(_){}});
+</script>
+{% endblock %}
