@@ -10,7 +10,7 @@ def enrol(client, **over):
 
 
 def test_teen_without_phone_registers_and_is_not_duplicated(client):
-    login(client, "usher")
+    login(client, "media")
     assert enrol(client, full_name="Tosin Bello", phone="", category="teen", sex="female").status_code == 302
     again = enrol(client, full_name="tosin bello", phone="", category="teen")
     assert again.status_code == 200 and b"already on record" in again.data  # asks, does not duplicate
@@ -22,7 +22,7 @@ def test_teen_without_phone_registers_and_is_not_duplicated(client):
 
 
 def test_phone_still_required_for_adults(client):
-    login(client, "usher")
+    login(client, "media")
     assert b"valid Nigerian mobile" in enrol(client, phone="").data
     assert Person.query.count() == 0
 
@@ -33,7 +33,7 @@ def test_children_age_groups_stop_at_twelve(client):
 
 
 def test_people_page_filters_and_csv(client):
-    login(client, "usher")
+    login(client, "media")
     enrol(client, full_name="Ada Obi", phone="08012345678", category="worker", department="Choir", sex="female",
           birth_month="3", birth_day="5")
     enrol(client, full_name="Bayo Ojo", phone="08022222222", category="member", sex="male")
@@ -50,13 +50,13 @@ def test_people_page_filters_and_csv(client):
 
 
 def test_people_page_is_admin_only(client):
-    login(client, "usher")
+    login(client, "media")
     assert client.get("/admin/people").status_code == 403
 
 
 def test_attendance_csv_filters_by_sex_and_category(client):
     from app.services.attendance import today_local
-    login(client, "usher")
+    login(client, "media")
     enrol(client, full_name="Ada Obi", phone="08012345678", sex="female")
     enrol(client, full_name="Bayo Ojo", phone="08022222222", sex="male")
     client.post("/logout"); login(client, "admin")

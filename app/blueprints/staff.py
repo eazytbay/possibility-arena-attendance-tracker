@@ -27,7 +27,7 @@ def _kids_prefill(form):
 
 
 @bp.route("/enrol", methods=["GET", "POST"])
-@role_required("usher", "media")
+@role_required("media")
 def enrol():
     """Staff-operated registration: take someone's details and mark them present."""
     svc = get_or_create_service()
@@ -67,7 +67,7 @@ def enrol():
 
 
 @bp.get("/photo/<int:pid>.jpg")
-@role_required("usher", "media")
+@role_required("media")
 def photo(pid):
     person = db.get_or_404(Person, pid)
     if person.category == "child" or not person.has_photo:
@@ -85,7 +85,7 @@ def display():
 
 
 @bp.get("/checkin")
-@role_required("usher", "media")
+@role_required("media")
 def checkin():
     svc = get_or_create_service()
     count = Attendance.query.filter_by(service_id=svc.id).count()
@@ -93,7 +93,7 @@ def checkin():
 
 
 @bp.get("/api/search")
-@role_required("usher", "media")
+@role_required("media")
 def search():
     q = request.args.get("q", "").strip()
     if len(q) < 2:
@@ -113,21 +113,21 @@ def search():
 
 
 @bp.post("/api/checkin/<int:pid>")
-@role_required("usher", "media")
+@role_required("media")
 def api_checkin(pid):
     person = db.get_or_404(Person, pid)
     if person.category == "child":
         return jsonify(error="Children are checked in from the Children page."), 400
     user = current_user()
     svc = get_or_create_service()
-    _, created = mark_present(person, svc, user.id, "usher")
+    _, created = mark_present(person, svc, user.id, "staff")
     if created:
         audit(user.username, "checkin", f"{person.id}:{person.full_name}")
     return jsonify(ok=True, created=created, status=visitor_status(person, svc))
 
 
 @bp.post("/api/visitor")
-@role_required("usher", "media")
+@role_required("media")
 def api_visitor():
     data = request.get_json(silent=True) or {}
     name = " ".join(str(data.get("name", "")).split())[:120]
@@ -137,7 +137,7 @@ def api_visitor():
     user = current_user()
     svc = get_or_create_service()
     person, _ = upsert_adult(name, phone, "visitor", None)
-    mark_present(person, svc, user.id, "usher")
+    mark_present(person, svc, user.id, "staff")
     audit(user.username, "visitor", f"{person.id}:{person.full_name}")
     return jsonify(ok=True, name=person.full_name, status=visitor_status(person, svc))
 
@@ -174,7 +174,7 @@ def child_checkin(pid):
         return jsonify(error="Not a child record."), 400
     user = current_user()
     svc = get_or_create_service()
-    att, created = mark_present(child, svc, user.id, "usher")
+    att, created = mark_present(child, svc, user.id, "staff")
     code = assign_pickup_code(att)
     if created:
         audit(user.username, "child_checkin", f"{child.id}:{child.full_name}")

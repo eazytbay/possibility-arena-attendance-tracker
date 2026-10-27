@@ -11,7 +11,7 @@ def app():
                       "SQLALCHEMY_DATABASE_URI": "sqlite://", "RATELIMIT_ENABLED": False})
     with app.app_context():
         db.create_all()
-        for name, role in (("admin", "admin"), ("usher", "usher"), ("kids", "children")):
+        for name, role in (("admin", "admin"), ("media", "media"), ("kids", "children")):
             db.session.add(User(username=name, role=role, password_hash=generate_password_hash("password123")))
         db.session.commit()
         yield app

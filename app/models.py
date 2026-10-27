@@ -12,7 +12,7 @@ DEPARTMENTS = (
     "Choir", "Ushers", "Protocol", "Media", "Sanitation", "Welfare",
     "Intercessors", "Technical", "Counsellors", "Sunday School",
 )
-ROLES = ("owner", "admin", "media", "usher", "children")
+ROLES = ("owner", "admin", "media", "children")
 AGE_GROUPS = ("0-2", "3-5", "6-9", "10-12")  # children; 13 and over register as teens
 MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August", "September",
           "October", "November", "December")
@@ -59,7 +59,7 @@ class Attendance(db.Model):
     person_id = db.Column(db.Integer, db.ForeignKey("people.id"), nullable=False, index=True)
     checked_in_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
     checked_in_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
-    source = db.Column(db.String(10), nullable=False, default="usher")
+    source = db.Column(db.String(10), nullable=False, default="staff")
     pickup_code = db.Column(db.String(4), nullable=True)
     category_at_visit = db.Column(db.String(10), nullable=True)  # category on that Sunday (survives promotion)
     released_at = db.Column(db.DateTime(timezone=True), nullable=True)

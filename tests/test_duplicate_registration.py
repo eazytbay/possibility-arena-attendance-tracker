@@ -9,7 +9,7 @@ def enrol(client, **over):
 
 
 def test_second_registration_same_day_asks_and_changes_nothing(client):
-    login(client, "usher")
+    login(client, "media")
     assert enrol(client, department="Choir").status_code == 302
     r = enrol(client, full_name="Adaora Obi", department="Media")
     assert r.status_code == 200
@@ -21,7 +21,7 @@ def test_second_registration_same_day_asks_and_changes_nothing(client):
 
 
 def test_confirming_updates_the_details(client):
-    login(client, "usher")
+    login(client, "media")
     enrol(client)
     r = enrol(client, full_name="Adaora Obi", confirmed="1")
     assert r.status_code == 302
@@ -31,7 +31,7 @@ def test_confirming_updates_the_details(client):
 def test_registered_in_the_week_then_again_on_sunday_is_flagged_not_duplicated(client, app):
     from datetime import date, timedelta
     from app.models import Service, db
-    login(client, "usher")
+    login(client, "media")
     enrol(client)
     # make the first registration look like it happened on an earlier day
     old = Service(service_date=date.today() - timedelta(days=4), name="midweek", access_code="ABCDE")
@@ -46,7 +46,7 @@ def test_registered_in_the_week_then_again_on_sunday_is_flagged_not_duplicated(c
 
 
 def test_same_name_not_yet_present_just_goes_through(client):
-    login(client, "usher")
+    login(client, "media")
     from app.models import db
     db.session.add(Person(full_name="Ada Obi", phone="08012345678", category="member"))
     db.session.commit()
@@ -67,14 +67,14 @@ def test_self_registration_cannot_overwrite_someone_elses_record(client, app):
 
 
 def test_children_typed_are_kept_when_the_notice_appears(client):
-    login(client, "usher")
+    login(client, "media")
     enrol(client)
     r = enrol(client, child_name=["Tomi Obi"], child_age=["3-5"], child_notes=["peanut allergy"], confirmed="")
     assert r.status_code == 200 and b"Tomi Obi" in r.data and b"peanut allergy" in r.data
 
 
 def test_adding_a_child_to_a_parent_already_on_record(client):
-    login(client, "usher")
+    login(client, "media")
     enrol(client)
     r = enrol(client, child_name=["Tomi Obi"], child_age=["3-5"], child_notes=[""], confirmed="1")
     assert r.status_code == 302
@@ -83,7 +83,7 @@ def test_adding_a_child_to_a_parent_already_on_record(client):
 
 
 def test_children_page_shows_totals_and_age_filters(client):
-    login(client, "usher")
+    login(client, "media")
     enrol(client, child_name=["Tomi Obi", "Bayo Obi"], child_age=["3-5", "6-9"], child_notes=["", ""])
     from tests.conftest import login as lg
     c2 = client.application.test_client()
@@ -93,7 +93,7 @@ def test_children_page_shows_totals_and_age_filters(client):
 
 
 def test_pickup_code_only_for_ages_zero_to_five(client):
-    login(client, "usher")
+    login(client, "media")
     enrol(client, child_name=["Tiny", "Mid", "Big", "Unknown"], child_age=["0-2", "3-5", "6-9", ""], child_notes=["", "", "", ""])
     login(client, "kids")
     out = {k.full_name: client.post(f"/api/children/{k.id}/checkin").get_json()

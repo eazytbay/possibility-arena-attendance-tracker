@@ -56,7 +56,7 @@ def get_or_create_service(d: date | None = None) -> Service:
     return svc
 
 
-def mark_present(person: Person, service: Service, user_id: int | None = None, source: str = "usher"):
+def mark_present(person: Person, service: Service, user_id: int | None = None, source: str = "staff"):
     """Idempotent: marking the same person twice for a service returns the existing row."""
     existing = Attendance.query.filter_by(service_id=service.id, person_id=person.id).first()
     if existing:

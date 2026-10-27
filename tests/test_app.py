@@ -66,16 +66,16 @@ def test_children_registered_under_guardian(client):
 
 
 def test_visitor_status_first_time(client):
-    login(client, "usher")
+    login(client, "media")
     r = client.post("/api/visitor", json={"name": "Guest One", "phone": "08099999999"})
     assert r.get_json()["status"] == "first-time visitor"
 
 
-def test_usher_checkin_idempotent(client):
+def test_staff_checkin_idempotent(client):
     reg(client)
     pid = Person.query.one().id
     Attendance.query.delete(); db.session.commit()
-    login(client, "usher")
+    login(client, "media")
     assert client.post(f"/api/checkin/{pid}").get_json()["created"] is True
     assert client.post(f"/api/checkin/{pid}").get_json()["created"] is False
     assert Attendance.query.count() == 1
@@ -83,7 +83,7 @@ def test_usher_checkin_idempotent(client):
 
 def test_search_finds_by_name_and_phone(client):
     reg(client)
-    login(client, "usher")
+    login(client, "media")
     assert client.get("/api/search?q=ada").get_json()[0]["name"] == "Ada Obi"
     assert client.get("/api/search?q=5678").get_json()[0]["phone_tail"] == "5678"
 
@@ -103,7 +103,7 @@ def test_children_pickup_flow(client):
 
 def test_permissions(client):
     assert client.get("/admin/").status_code == 302          # not logged in
-    login(client, "usher")
+    login(client, "media")
     assert client.get("/admin/").status_code == 403
     assert client.get("/children").status_code == 403
     assert client.get("/checkin").status_code == 200
@@ -165,10 +165,6 @@ def test_admin_can_rotate_code_and_close(client):
 
 
 def test_media_role_sees_code_only(client, app):
-    from werkzeug.security import generate_password_hash
-    from app.models import User
-    db.session.add(User(username="media", role="media", password_hash=generate_password_hash("password123")))
-    db.session.commit()
     login(client, "media")
     page = client.get("/display").data.decode()
     assert code() in page
@@ -179,7 +175,7 @@ def test_media_role_sees_code_only(client, app):
 
 
 def test_staff_enrol_registers_and_marks_present(client):
-    login(client, "usher")
+    login(client, "media")
     r = client.post("/enrol", data={"full_name": "Chidi Eze", "phone": "07011112222", "category": "visitor",
                                     "child_name": ["Ife"], "child_age": ["6-9"], "child_notes": [""]})
     assert r.status_code == 302
@@ -190,7 +186,7 @@ def test_staff_enrol_registers_and_marks_present(client):
 
 
 def test_staff_enrol_rejects_bad_input(client):
-    login(client, "usher")
+    login(client, "media")
     assert b"valid Nigerian mobile" in client.post("/enrol", data={"full_name": "Chidi Eze", "phone": "1",
                                                                     "category": "member"}).data
 
@@ -278,7 +274,7 @@ def test_export_by_date_and_all(client):
 
 
 def test_birthday_saved_validated_and_exported(client):
-    login(client, "usher")
+    login(client, "media")
     base = {"full_name": "Chidi Eze", "phone": "07011112222", "category": "member"}
     bad = client.post("/enrol", data={**base, "birth_month": "2", "birth_day": "30"})
     assert b"not a valid date" in bad.data and Person.query.count() == 0
@@ -306,7 +302,7 @@ def _jpeg(w=2000, h=1500):
 def test_photo_shrunk_stored_and_protected(client):
     import io
     from PIL import Image
-    login(client, "usher")
+    login(client, "media")
     r = client.post("/enrol", data={"full_name": "Chidi Eze", "phone": "07011112222", "category": "member",
                                     "photo": (_jpeg(), "big.jpg")}, content_type="multipart/form-data")
     assert r.status_code == 302
@@ -322,7 +318,7 @@ def test_photo_shrunk_stored_and_protected(client):
 
 def test_bad_photo_rejected_and_nothing_saved(client):
     import io
-    login(client, "usher")
+    login(client, "media")
     r = client.post("/enrol", data={"full_name": "Chidi Eze", "phone": "07011112222", "category": "member",
                                     "photo": (io.BytesIO(b"not an image"), "x.jpg")},
                     content_type="multipart/form-data")
@@ -330,7 +326,7 @@ def test_bad_photo_rejected_and_nothing_saved(client):
 
 
 def test_children_never_have_photo_served(client):
-    login(client, "usher")
+    login(client, "media")
     client.post("/enrol", data={"full_name": "Ada Obi", "phone": "08012345678", "category": "member",
                                 "child_name": ["Tomi"], "child_age": ["3-5"], "child_notes": [""]})
     kid = Person.query.filter_by(category="child").one()

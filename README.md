@@ -1,6 +1,6 @@
 # Church Attendance
 
-Mobile-first attendance system for a church of ~400 people: QR self-registration, usher check-in,
+Mobile-first attendance system for a church of ~400 people: QR self-registration, media-team check-in,
 automatic first-time-visitor detection, children's ministry drop-off and pickup codes, and CSV export.
 
 ## Design decisions
@@ -8,7 +8,7 @@ automatic first-time-visitor detection, children's ministry drop-off and pickup 
 - **Idempotent check-in**: a unique (service, person) constraint makes double scans and retries safe.
 - **Households**: children are linked to a guardian and carry no phone number or photo.
 - **Child safety**: a per-service 4-digit pickup code; a child is released only against that code, once.
-- **Roles**: admin, usher, children. Least privilege enforced server-side.
+- **Roles**: owner, admin, media, children. Least privilege enforced server-side.
 - **Security**: CSRF protection, login rate limiting, hashed passwords, CSV formula-injection guard,
   honeypot on the public form, audit log of check-ins, releases, exports and user changes.
 - **Time zone**: services are dated in Africa/Lagos.

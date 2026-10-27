@@ -31,9 +31,9 @@ def register():
     step = f.get("step", "full")
     svc = get_or_create_service()
     if not svc.registration_open:
-        return _page("attend", f, "Attendance is closed for today. Please see an usher.", 403)
+        return _page("attend", f, "Attendance is closed for today. Please see the media team.", 403)
     if not code_is_valid(svc, f.get("code", "")):
-        return _page("attend", f, "That service code is not correct. Ask an usher for today's code.", 400)
+        return _page("attend", f, "That service code is not correct. Ask the media team for today's code.", 400)
 
     phone = normalize_phone(f.get("phone"))
     if not phone:
@@ -56,7 +56,7 @@ def register():
     if error:
         return _page("full", f, error, 400)
     if res.get("confirm"):
-        return _page("full", f, "This number is already registered. Please ask an usher to check you in.", 409)
+        return _page("full", f, "This number is already registered. Please ask the media team to check you in.", 409)
     person = res["person"]
     return render_template("done.html", name=person.full_name.split()[0], status=res["status"],
                            children=res["kids"], welcome_back=not res["created"])

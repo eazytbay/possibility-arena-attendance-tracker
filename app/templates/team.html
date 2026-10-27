@@ -24,5 +24,5 @@
 <label for="tr">Role</label><select id="tr" name="role">{% for r in roles %}<option>{{ r }}</option>{% endfor %}</select>
 <label for="tp">Password (8+ characters)</label><input id="tp" name="password" type="password" minlength="8" required autocomplete="new-password">
 <button class="full" type="submit">Create login</button></form>
-<p class="sub">Roles: <strong>admin</strong> sees everything except this page. <strong>media</strong> registers people and checks them in. <strong>usher</strong> does the same. <strong>children</strong> handles children only.</p>
+<p class="sub">Roles: <strong>admin</strong> sees everything except this page. <strong>media</strong> registers people and checks them in. <strong>children</strong> handles children only.</p>
 </div>{% endblock %}

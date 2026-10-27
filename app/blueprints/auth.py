@@ -46,7 +46,7 @@ def owner_required(fn):
 
 
 def landing_for(user) -> str:
-    return url_for({"owner": "admin.dashboard", "admin": "admin.dashboard", "usher": "staff.enrol", "children": "staff.children", "media": "staff.enrol"}[user.role])
+    return url_for({"owner": "admin.dashboard", "admin": "admin.dashboard", "children": "staff.children", "media": "staff.enrol"}[user.role])
 
 
 @bp.get("/")

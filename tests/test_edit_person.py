@@ -29,8 +29,10 @@ def post(client, p, **over):
 def test_edit_requires_login_and_role(client):
     p = make()
     assert client.get(f"/admin/person/{p.id}/edit").status_code == 302
-    login(client, "usher")
+    login(client, "kids")  # the children's team cannot edit people
     assert client.get(f"/admin/person/{p.id}/edit").status_code == 403
+    login(client, "media")
+    assert client.get(f"/admin/person/{p.id}/edit").status_code == 200
 
 
 def test_page_renders_for_adult_and_child(client):

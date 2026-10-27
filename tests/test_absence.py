@@ -81,7 +81,7 @@ def test_not_enough_sundays_gives_a_clear_note(app):
 def test_page_and_csv_admin_only(client):
     s = make_services(3)
     p = person("Away One", "08011110002"); mark_present(p, s[0])
-    login(client, "usher")
+    login(client, "media")
     assert client.get("/admin/absent").status_code == 403
     login(client, "admin")
     page = client.get(f"/admin/absent?date={week(2).isoformat()}")
