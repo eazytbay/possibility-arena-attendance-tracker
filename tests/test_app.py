@@ -332,3 +332,30 @@ def test_children_never_have_photo_served(client):
     kid = Person.query.filter_by(category="child").one()
     kid.photo, kid.has_photo = b"x", True; db.session.commit()
     assert client.get(f"/photo/{kid.id}.jpg").status_code == 404
+
+
+def test_photo_data_from_camera_page_is_stored(client):
+    import base64, io
+    from PIL import Image
+    login(client, "media")
+    buf = io.BytesIO(); Image.new("RGB", (240, 240), (120, 60, 20)).save(buf, "JPEG", quality=70)
+    url = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+    r = client.post("/enrol", data={"full_name": "Ada Obi", "phone": "07022223333", "category": "member",
+                                    "photo_data": url})
+    assert r.status_code == 302
+    p = Person.query.filter_by(full_name="Ada Obi").one()
+    assert p.has_photo and Image.open(io.BytesIO(p.photo)).size == (240, 240)
+
+
+def test_bad_photo_data_rejected_and_nothing_saved(client):
+    login(client, "media")
+    r = client.post("/enrol", data={"full_name": "Ada Obi", "phone": "07022223333", "category": "member",
+                                    "photo_data": "data:image/jpeg;base64,@@@notbase64@@@"})
+    assert b"not a valid photo" in r.data and Person.query.count() == 0
+
+
+def test_forms_show_camera_and_gallery_buttons(client):
+    login(client, "media")
+    html = client.get("/enrol").get_data(as_text=True)
+    assert "Take photo" in html and "Choose from gallery" in html and 'capture="environment"' in html
+    assert 'type="file" accept="image/*">' not in html.replace('hidden', '').replace('id="photo-in-pick" ', '')

@@ -15,7 +15,7 @@ from ..services.absence import absent_csv, absent_on, missed_in_a_row, sundays_h
 from ..services.attendance import (parse_birthday, attendance_all_csv, attendance_csv, audit, get_or_create_service, new_access_code,
                                    filter_people, people_csv, visit_counts, visitor_status)
 from ..services.phone import normalize_phone
-from ..services.photos import process_photo
+from ..services.photos import photo_from_request, process_photo
 from .auth import current_user, owner_required, role_required
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -272,7 +272,7 @@ def edit_person(pid):
             photo = None
             if not error:
                 try:
-                    photo = process_photo(request.files.get("photo"))
+                    photo = photo_from_request(request)
                 except ValueError as exc:
                     error = str(exc)
             if not error:

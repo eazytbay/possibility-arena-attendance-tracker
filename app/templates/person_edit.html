@@ -27,18 +27,11 @@
 <label for="ph2">Photo</label>
 {% if p.has_photo %}<p><img src="{{ url_for('staff.photo', pid=p.id) }}" alt="Current photo of {{ p.full_name }}" width="96" height="96" style="border-radius:8px"></p>
 <label style="font-weight:400"><input type="checkbox" name="remove_photo" value="1"> Remove this photo</label>{% endif %}
-<input id="ph2" name="photo" type="file" accept="image/*">
+{% with facing='environment' %}{% include '_photo_field.html' %}{% endwith %}
 <p class="sub" style="margin:6px 0 0">Choose a new picture to {{ 'replace the current one' if p.has_photo else 'add one' }}. It is shrunk to a small thumbnail.</p>
 <label style="font-weight:400;margin-top:16px"><input type="checkbox" name="sms_opt_in" value="1" {{ 'checked' if (v.get('sms_opt_in') == '1' if form else p.sms_opt_in) }}> Send this person birthday, new month and holiday greetings by SMS</label>
 {% endif %}
 <button class="full" type="submit">Save changes</button>
 <a class="btn ghost" href="{{ url_for('admin.people') }}" style="margin-top:10px">Cancel</a>
 </form></div>{% endblock %}
-{% block script %}
-<script>
-const f=document.getElementById('ph2');if(f)f.addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;
-try{const bmp=await createImageBitmap(file);const s=Math.min(bmp.width,bmp.height),c=document.createElement('canvas');c.width=c.height=240;
-c.getContext('2d').drawImage(bmp,(bmp.width-s)/2,(bmp.height-s)/2,s,s,0,0,240,240);
-const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.7));const dt=new DataTransfer();dt.items.add(new File([blob],'photo.jpg',{type:'image/jpeg'}));e.target.files=dt.files}catch(_){}});
-</script>
-{% endblock %}
+

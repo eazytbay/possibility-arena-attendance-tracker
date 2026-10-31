@@ -1,10 +1,12 @@
 """Photo handling: always re-encode to a small square JPEG so storage stays tiny and EXIF/GPS is dropped."""
+import base64
 import io
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 MAX_UPLOAD_BYTES = 6 * 1024 * 1024
 SIZE = 240
+MAX_DATAURL_CHARS = 600_000
 
 
 def process_photo(file_storage) -> bytes | None:
@@ -14,6 +16,25 @@ def process_photo(file_storage) -> bytes | None:
     raw = file_storage.read(MAX_UPLOAD_BYTES + 1)
     if not raw:
         return None
+    return _encode(raw)
+
+
+def photo_from_request(req) -> bytes | None:
+    """Photo from the form: the small JPEG the page makes (photo_data), else an uploaded file (photo)."""
+    data = (req.form.get("photo_data") or "").strip()
+    if data:
+        head, _, b64 = data.partition(",")
+        if not head.startswith("data:image/") or "base64" not in head or len(b64) > MAX_DATAURL_CHARS:
+            raise ValueError("That file is not a valid photo.")
+        try:
+            raw = base64.b64decode(b64, validate=True)
+        except ValueError:
+            raise ValueError("That file is not a valid photo.") from None
+        return _encode(raw) if raw else None
+    return process_photo(req.files.get("photo"))
+
+
+def _encode(raw: bytes) -> bytes:
     if len(raw) > MAX_UPLOAD_BYTES:
         raise ValueError("That photo file is too large.")
     try:

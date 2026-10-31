@@ -1,0 +1,42 @@
+{# Photo picker: Take photo (phone camera) + Choose from gallery. Sends a small JPEG as the hidden field photo_data.
+   Set `facing` before including: "user" = front camera (self check-in), "environment" = back camera (staff). #}
+<div class="photo-field">
+  <div class="photo-row">
+    <img id="photo-prev" class="photo-prev" alt="Photo preview" width="96" height="96" hidden>
+    <div class="photo-btns">
+      <button type="button" class="ghost" id="photo-cam">Take photo</button>
+      <button type="button" class="ghost" id="photo-pick">Choose from gallery</button>
+      <button type="button" class="ghost" id="photo-clear" hidden>Remove new photo</button>
+    </div>
+  </div>
+  <input type="file" id="photo-in-cam" accept="image/*" capture="{{ facing|default('user') }}" hidden>
+  <input type="file" id="photo-in-pick" accept="image/*" hidden>
+  <input type="hidden" name="photo_data" id="photo-data">
+  <p class="sub" id="photo-msg" role="status" aria-live="polite" style="margin:6px 0 0"></p>
+</div>
+<script>
+(function(){
+  const data=document.getElementById('photo-data'),prev=document.getElementById('photo-prev'),
+        msg=document.getElementById('photo-msg'),clr=document.getElementById('photo-clear');
+  async function thumb(file){
+    let img;
+    try{img=await createImageBitmap(file,{imageOrientation:'from-image'})}
+    catch(_){img=await new Promise((ok,no)=>{const u=URL.createObjectURL(file),im=new Image();
+      im.onload=()=>{URL.revokeObjectURL(u);ok(im)};im.onerror=()=>no(new Error('unreadable'));im.src=u})}
+    const w=img.width||img.naturalWidth,h=img.height||img.naturalHeight,s=Math.min(w,h),c=document.createElement('canvas');
+    c.width=c.height=240;c.getContext('2d').drawImage(img,(w-s)/2,(h-s)/2,s,s,0,0,240,240);
+    return c.toDataURL('image/jpeg',0.7);
+  }
+  async function picked(e){
+    const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
+    msg.textContent='Preparing photo...';
+    try{const url=await thumb(f);data.value=url;prev.src=url;prev.hidden=false;clr.hidden=false;msg.textContent='Photo ready. It is saved when you submit.'}
+    catch(_){msg.textContent='That photo could not be read. Please try another one.'}
+  }
+  const cam=document.getElementById('photo-in-cam'),pick=document.getElementById('photo-in-pick');
+  cam.addEventListener('change',picked);pick.addEventListener('change',picked);
+  document.getElementById('photo-cam').addEventListener('click',()=>cam.click());
+  document.getElementById('photo-pick').addEventListener('click',()=>pick.click());
+  clr.addEventListener('click',()=>{data.value='';prev.hidden=true;prev.removeAttribute('src');clr.hidden=true;msg.textContent='Photo removed.'});
+})();
+</script>

@@ -75,3 +75,8 @@ main>.note{position:relative;margin:0 0 12px;box-shadow:0 6px 18px #0c0b1d33;fon
 .hero+main>.note:first-child{margin-top:60px}
 
 .avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;flex:none;border:2px solid var(--line)}
+
+.photo-row{display:flex;gap:14px;align-items:center;margin-top:6px}
+.photo-prev{border-radius:12px;object-fit:cover;border:1.5px solid var(--line);flex:none}
+.photo-btns{display:flex;flex-direction:column;gap:8px;flex:1}
+.photo-btns button{width:100%}

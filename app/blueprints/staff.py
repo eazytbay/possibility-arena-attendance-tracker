@@ -12,7 +12,7 @@ from ..models import AGE_GROUPS, DEPARTMENTS, MONTHS, REGISTER_CATEGORIES, SEXES
 from ..services.attendance import (assign_pickup_code, needs_pickup_code, audit, get_or_create_service,
                                    mark_present, register_full, upsert_adult, visitor_status)
 from ..services.phone import normalize_phone
-from ..services.photos import process_photo
+from ..services.photos import photo_from_request, process_photo
 from .auth import current_user, role_required
 
 bp = Blueprint("staff", __name__)
@@ -37,7 +37,7 @@ def enrol():
         form = request.form
         photo, error = None, None
         try:
-            photo = process_photo(request.files.get("photo"))
+            photo = photo_from_request(request)
         except ValueError as exc:
             error = str(exc)
         res = None
