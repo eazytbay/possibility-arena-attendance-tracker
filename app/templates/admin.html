@@ -2,10 +2,10 @@
 {% block nav %}{% include "_nav.html" %}{% endblock %}
 {% block mainclass %}wide{% endblock %}
 {% block hero %}<section class="hero left"><div class="in">
-<h1>Today's attendance</h1><p>{{ svc.service_date.strftime('%A %d %B %Y') }}</p></div></section>{% endblock %}
+<h1>{{ "Today's attendance" if is_today else "Latest service" }}</h1><p>{% if last %}{{ last.service_date.strftime('%A %d %B %Y') }}{% else %}No service yet{% endif %}</p></div></section>{% endblock %}
 {% block body %}<div class="sheet">
 <div class="card" style="text-align:center">
-<div class="sub" style="margin:0">Today's service code (announce it or show it on screen)</div>
+<div class="sub" style="margin:0">Service code for {{ svc.service_date.strftime('%A %d %B') }}{% if is_today %} (today: announce it or show it on screen){% else %} (the next service){% endif %}</div>
 <div class="code" style="font-size:2.6rem">{{ svc.access_code }}</div>
 <p class="sub" style="margin:8px 0 12px">Self check-in is <strong>{{ 'open' if svc.registration_open else 'closed' }}</strong>.</p>
 <div class="btn-row" style="justify-content:center">

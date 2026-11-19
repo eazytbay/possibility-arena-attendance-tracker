@@ -1,9 +1,9 @@
 {% extends "base.html" %}{% block title %}Register people{% endblock %}
 {% block nav %}{% include "_nav.html" %}{% endblock %}
 {% block hero %}<section class="hero left"><div class="in">
-<h1>Register a person</h1><p>{{ service.service_date.strftime('%A %d %B %Y') }} · <strong>{{ count }} present</strong></p></div></section>{% endblock %}
+<h1>Register a person</h1><p>{% if service %}{{ service.service_date.strftime('%A %d %B %Y') }} · <strong>{{ count }} present</strong>{% else %}Not a service day: people are saved but not marked present{% endif %}</p></div></section>{% endblock %}
 {% block body %}<div class="sheet">
-<p class="sub">Take the person's details. They are saved and marked present. If they are already on record, search for them under Check-in instead.</p>
+<p class="sub">Take the person's details. They are saved{% if service %} and marked present{% endif %}. If they are already on record, search for them under Check-in instead.</p>
 {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
 {% if notice %}<div class="error" role="alert" style="background:#fff7e0;border-color:#e0b000;color:#4a3a00">
 <strong>{{ notice.name }}</strong> is already on record{% if notice.phone %} with {{ notice.phone }}{% endif %} ({{ notice.category }}{% if notice.department %}, {{ notice.department }}{% endif %}).

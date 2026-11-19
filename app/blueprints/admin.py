@@ -13,7 +13,7 @@ from werkzeug.security import generate_password_hash
 from ..models import (AGE_GROUPS, Broadcast, CATEGORIES, DEPARTMENTS, REGISTER_CATEGORIES, MONTHS, ROLES, SEXES, Attendance, Person,
                       PersonDepartment, Service, User, db)
 from ..services.absence import absent_csv, absent_on, missed_in_a_row, sundays_held
-from ..services.attendance import (parse_birthday, parse_departments, attendance_all_csv, attendance_csv, audit, get_or_create_service, new_access_code,
+from ..services.attendance import (parse_birthday, parse_departments, attendance_all_csv, attendance_csv, audit, get_or_create_service, latest_service, new_access_code, next_service_date,
                                    filter_people, people_csv, visit_counts, visitor_status)
 from ..services import broadcast as bc
 from ..services.phone import normalize_phone
@@ -32,33 +32,34 @@ def _csv_response(text: str, filename: str) -> Response:
 @bp.get("/")
 @role_required()
 def dashboard():
-    svc = get_or_create_service()
-    base = Attendance.query.filter_by(service_id=svc.id)
+    svc = get_or_create_service(next_service_date())   # today's service, or the coming one: its code and self check-in switch
+    last = latest_service()                              # the service whose numbers are shown below
+    base = Attendance.query.filter_by(service_id=last.id) if last else Attendance.query.filter(db.false())
     total = base.count()
     cat_expr = func.coalesce(Attendance.category_at_visit, Person.category)
     by_cat = dict(db.session.query(cat_expr, func.count()).select_from(Attendance)
                   .join(Person, Person.id == Attendance.person_id)
-                  .filter(Attendance.service_id == svc.id).group_by(cat_expr).all())
+                  .filter(Attendance.service_id == (last.id if last else 0)).group_by(cat_expr).all())
     # A person who serves in two departments is counted once in each of them.
     by_dept = db.session.query(PersonDepartment.department, func.count()).join(
         Attendance, Attendance.person_id == PersonDepartment.person_id).filter(
-        Attendance.service_id == svc.id).group_by(PersonDepartment.department).all()
+        Attendance.service_id == (last.id if last else 0)).group_by(PersonDepartment.department).all()
     visitors = [a.person for a in base.all() if (a.category_at_visit or a.person.category) == "visitor"]
-    first_time = sum(1 for p in visitors if visitor_status(p, svc) == "first-time visitor")
+    first_time = sum(1 for p in visitors if visitor_status(p, last) == "first-time visitor")
     services = Service.query.order_by(Service.service_date.desc()).limit(20).all()
     today = date.today()
-    birthdays = (Person.query.filter(Person.birth_month == svc.service_date.month, Person.category != "child")
+    birthdays = (Person.query.filter(Person.birth_month == today.month, Person.category != "child")
                  .order_by(Person.birth_day, Person.full_name).all())
-    return render_template("admin.html", svc=svc, total=total, by_cat=by_cat, by_dept=sorted(by_dept),
+    return render_template("admin.html", svc=svc, last=last, is_today=svc.service_date == today, total=total, by_cat=by_cat, by_dept=sorted(by_dept),
                            first_time=first_time, services=services,
                            people_total=Person.query.count(), birthdays=birthdays,
-                           today_day=svc.service_date.day, month_name=svc.service_date.strftime('%B'))
+                           today_day=today.day, month_name=today.strftime('%B'))
 
 
 @bp.post("/service/code")
 @role_required()
 def regenerate_code():
-    svc = get_or_create_service()
+    svc = get_or_create_service(next_service_date())
     svc.access_code = new_access_code()
     db.session.commit()
     audit(current_user().username, "new_code", svc.service_date.isoformat())
@@ -69,7 +70,7 @@ def regenerate_code():
 @bp.post("/service/toggle")
 @role_required()
 def toggle_registration():
-    svc = get_or_create_service()
+    svc = get_or_create_service(next_service_date())
     svc.registration_open = not svc.registration_open
     db.session.commit()
     audit(current_user().username, "registration_open" if svc.registration_open else "registration_closed",
@@ -84,7 +85,8 @@ def export_attendance():
     try:
         d = date.fromisoformat(request.args.get("date", ""))
     except ValueError:
-        d = get_or_create_service().service_date
+        last = latest_service()
+        d = last.service_date if last else date.today()
     svc = Service.query.filter_by(service_date=d).first()
     if not svc:
         flash(f"No attendance was recorded on {d.strftime('%d %B %Y')}.")

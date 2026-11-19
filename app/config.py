@@ -20,6 +20,8 @@ class Config:
     MISSED_IN_A_ROW = int(os.environ.get("MISSED_IN_A_ROW", "3"))
     # A visitor becomes a member automatically on this many Sundays attended (0 = never).
     VISITOR_PROMOTE_AFTER = int(os.environ.get("VISITOR_PROMOTE_AFTER", "4"))
+    # Days attendance can be recorded: 0=Monday ... 6=Sunday. Default Sunday only. "6" or e.g. "2,6" for Wednesday + Sunday.
+    SERVICE_WEEKDAYS = os.environ.get("SERVICE_WEEKDAYS", "6")
     # SMS greetings. Nothing is sent unless SMS_ENABLED=true and a token is set.
     SMS_ENABLED = os.environ.get("SMS_ENABLED", "false").lower() == "true"
     SMS_API_TOKEN = os.environ.get("SMS_API_TOKEN", "")

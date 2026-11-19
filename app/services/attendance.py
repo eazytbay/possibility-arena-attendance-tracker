@@ -21,6 +21,43 @@ def today_local() -> date:
     return datetime.now(ZoneInfo(current_app.config["TIMEZONE"])).date()
 
 
+def service_weekdays() -> set[int]:
+    raw = str(current_app.config.get("SERVICE_WEEKDAYS", "6"))
+    days = {int(x) for x in raw.replace(" ", "").split(",") if x.isdigit() and 0 <= int(x) <= 6}
+    return days or {6}
+
+
+def is_service_day(d: date | None = None) -> bool:
+    """True when attendance may be recorded on this day (Sundays by default). The demo accepts any day."""
+    if current_app.config.get("DEMO_MODE"):
+        return True
+    return (d or today_local()).weekday() in service_weekdays()
+
+
+def next_service_date(d: date | None = None) -> date:
+    """Today if it is a service day, otherwise the next one."""
+    from datetime import timedelta
+    d = d or today_local()
+    for i in range(8):
+        if is_service_day(d + timedelta(days=i)):
+            return d + timedelta(days=i)
+    return d
+
+
+def todays_service() -> "Service | None":
+    """Today's service, or None when today is not a service day (nobody can be marked present then)."""
+    return get_or_create_service() if is_service_day() else None
+
+
+def latest_service() -> "Service | None":
+    """The most recent service that has happened (today's if today is one), for dashboard numbers."""
+    q = Service.query.filter(Service.service_date <= today_local()).order_by(Service.service_date.desc())
+    for s in q.limit(60):
+        if is_service_day(s.service_date):
+            return s
+    return None
+
+
 def audit(actor: str, action: str, detail: str = "") -> None:
     db.session.add(AuditLog(actor=actor, action=action, detail=detail[:300]))
     db.session.commit()
@@ -57,7 +94,10 @@ def get_or_create_service(d: date | None = None) -> Service:
 
 
 def mark_present(person: Person, service: Service, user_id: int | None = None, source: str = "staff"):
-    """Idempotent: marking the same person twice for a service returns the existing row."""
+    """Idempotent: marking the same person twice for a service returns the existing row.
+    Refuses a day that is not a service day (Sunday by default), so attendance can never land on a random date."""
+    if not is_service_day(service.service_date):
+        raise ValueError(f"{service.service_date} is not a service day")
     existing = Attendance.query.filter_by(service_id=service.id, person_id=person.id).first()
     if existing:
         return existing, False
@@ -296,7 +336,7 @@ def _find_existing(name: str, phone: str | None) -> Person | None:
                                Person.category == "teen", Person.phone.is_(None)).first()
 
 
-def register_full(f, svc: Service, user_id: int | None = None, source: str = "self", photo: bytes | None = None,
+def register_full(f, svc: "Service | None", user_id: int | None = None, source: str = "self", photo: bytes | None = None,
                   confirmed: bool = False):
     """Validate one registration form, save the adult and children, mark present.
 
@@ -329,7 +369,7 @@ def register_full(f, svc: Service, user_id: int | None = None, source: str = "se
     if not confirmed:
         existing = _find_existing(name, phone)
         if existing:
-            att = Attendance.query.filter_by(service_id=svc.id, person_id=existing.id).first()
+            att = Attendance.query.filter_by(service_id=svc.id, person_id=existing.id).first() if svc else None
             same_name = " ".join(existing.full_name.lower().split()) == name.lower()
             if att or not same_name:
                 return {"confirm": existing, "checked_in_at": att.checked_in_at if att else None}, None
@@ -337,8 +377,9 @@ def register_full(f, svc: Service, user_id: int | None = None, source: str = "se
     if photo:
         person.photo, person.has_photo = photo, True
         db.session.commit()
-    status = visitor_status(person, svc)
-    mark_present(person, svc, user_id, source)
+    status = visitor_status(person, svc) if svc else ""
+    if svc:                       # on a non-service day the person is saved but not marked present
+        mark_present(person, svc, user_id, source)
     kids = []
     names, ages, notes = f.getlist("child_name"), f.getlist("child_age"), f.getlist("child_notes")
     for i, cname in enumerate(names[:12]):

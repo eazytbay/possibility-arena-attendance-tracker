@@ -2,8 +2,8 @@ from flask import Blueprint, current_app, render_template, request
 
 from .. import limiter
 from ..models import AGE_GROUPS, DEPARTMENTS, MONTHS, REGISTER_CATEGORIES, SEXES, Person
-from ..services.attendance import (code_is_valid, get_or_create_service, mark_present, register_full,
-                                   visitor_status)
+from ..services.attendance import (code_is_valid, get_or_create_service, mark_present, next_service_date, register_full,
+                                   todays_service, visitor_status)
 from ..services.phone import normalize_phone
 from ..services.photos import photo_from_request, process_photo
 
@@ -20,7 +20,10 @@ def _page(step, form, error=None, status=200):
 @limiter.limit("60 per minute", methods=["POST"])  # a whole congregation may share one church Wi-Fi IP
 def register():
     if request.method == "GET":
-        if not get_or_create_service().registration_open:
+        svc = todays_service()
+        if svc is None:
+            return render_template("closed.html", next_date=next_service_date())
+        if not svc.registration_open:
             return render_template("closed.html")
         return _page("attend", {})
 
@@ -29,7 +32,9 @@ def register():
         return render_template("done.html", name="friend", status="", children=[], welcome_back=False)
 
     step = f.get("step", "full")
-    svc = get_or_create_service()
+    svc = todays_service()
+    if svc is None:
+        return _page("attend", f, f"Attendance is only taken on service days. The next one is {next_service_date().strftime('%A %d %B')}.", 403)
     if not svc.registration_open:
         return _page("attend", f, "Attendance is closed for today. Please see the media team.", 403)
     if not code_is_valid(svc, f.get("code", "")):

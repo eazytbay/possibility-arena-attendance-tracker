@@ -9,7 +9,7 @@ from sqlalchemy import or_
 
 from .. import limiter
 from ..models import AGE_GROUPS, DEPARTMENTS, MONTHS, REGISTER_CATEGORIES, SEXES, Attendance, Person, db
-from ..services.attendance import (assign_pickup_code, needs_pickup_code, audit, get_or_create_service,
+from ..services.attendance import (assign_pickup_code, needs_pickup_code, audit, next_service_date, todays_service,
                                    mark_present, register_full, upsert_adult, visitor_status)
 from ..services.phone import normalize_phone
 from ..services.photos import photo_from_request, process_photo
@@ -26,11 +26,21 @@ def _kids_prefill(form):
             for i, n in enumerate(names) if n.strip()]
 
 
+def _no_service_page():
+    nxt = next_service_date()
+    return render_template("no_service.html", next_date=nxt)
+
+
+def _no_service_json():
+    nxt = next_service_date()
+    return jsonify(error=f"Attendance is only taken on service days. The next one is {nxt.strftime('%A %d %B')}."), 400
+
+
 @bp.route("/enrol", methods=["GET", "POST"])
 @role_required("media")
 def enrol():
-    """Staff-operated registration: take someone's details and mark them present."""
-    svc = get_or_create_service()
+    """Staff-operated registration: take someone's details and mark them present (on a service day)."""
+    svc = todays_service()           # None on a day that is not a service day: people are saved, not marked present
     user = current_user()
     form, error = {}, None
     if request.method == "POST":
@@ -50,7 +60,7 @@ def enrol():
             notice = {"name": existing.full_name, "category": existing.category, "department": existing.department,
                       "phone": existing.phone, "present_at": at.astimezone(tz).strftime("%I:%M%p").lstrip("0").lower() if at else None,
                       "same_name": " ".join(existing.full_name.lower().split()) == " ".join(form.get("full_name", "").lower().split())}
-            count = Attendance.query.filter_by(service_id=svc.id).count()
+            count = Attendance.query.filter_by(service_id=svc.id).count() if svc else 0
             return render_template("enrol.html", service=svc, count=count, form=form, error=None, notice=notice, prefill=_kids_prefill(form),
                                    categories=REGISTER_CATEGORIES, sexes=SEXES, departments=DEPARTMENTS,
                                    age_groups=AGE_GROUPS, months=MONTHS)
@@ -58,9 +68,10 @@ def enrol():
             p = res["person"]
             audit(user.username, "enrol", f"{p.id}:{p.full_name}")
             tag = f" ({res['status']})" if res["status"] else ""
-            flash(f"{p.full_name}{tag} is marked present." + ("" if res["created"] else " Already on record: details updated."))
+            done = "is marked present." if svc else f"is registered. Attendance is only taken on a service day ({next_service_date().strftime('%A %d %B')})."
+            flash(f"{p.full_name}{tag} {done}" + ("" if res["created"] else " Already on record: details updated."))
             return redirect(url_for("staff.enrol"))
-    count = Attendance.query.filter_by(service_id=svc.id).count()
+    count = Attendance.query.filter_by(service_id=svc.id).count() if svc else 0
     return render_template("enrol.html", service=svc, count=count, form=form, error=error,
                            categories=REGISTER_CATEGORIES, sexes=SEXES, departments=DEPARTMENTS, age_groups=AGE_GROUPS,
                            months=MONTHS, notice=None, prefill=_kids_prefill(form))
@@ -79,7 +90,9 @@ def photo(pid):
 @bp.get("/display")
 @role_required("media")
 def display():
-    svc = get_or_create_service()
+    svc = todays_service()
+    if svc is None:
+        return _no_service_page()
     url = current_app.config["PUBLIC_BASE_URL"].rstrip("/") + "/register"
     return render_template("display.html", svc=svc, url=url)
 
@@ -87,7 +100,9 @@ def display():
 @bp.get("/checkin")
 @role_required("media")
 def checkin():
-    svc = get_or_create_service()
+    svc = todays_service()
+    if svc is None:
+        return _no_service_page()
     count = Attendance.query.filter_by(service_id=svc.id).count()
     return render_template("checkin.html", service=svc, count=count)
 
@@ -98,14 +113,14 @@ def search():
     q = request.args.get("q", "").strip()
     if len(q) < 2:
         return jsonify([])
-    svc = get_or_create_service()
+    svc = todays_service()
     digits = re.sub(r"\D", "", q)
     cond = Person.full_name.ilike(f"%{q}%")
     if len(digits) >= 3:
         cond = or_(cond, Person.phone.like(f"%{digits}%"))
     people = Person.query.filter(Person.category != "child", cond).order_by(Person.full_name).limit(15).all()
     present = {a.person_id for a in Attendance.query.filter(
-        Attendance.service_id == svc.id, Attendance.person_id.in_([p.id for p in people]))}
+        Attendance.service_id == svc.id, Attendance.person_id.in_([p.id for p in people]))} if svc else set()
     return jsonify([{
         "id": p.id, "name": p.full_name, "category": p.category, "department": p.department or "",
         "departments": p.departments,
@@ -120,7 +135,9 @@ def api_checkin(pid):
     if person.category == "child":
         return jsonify(error="Children are checked in from the Children page."), 400
     user = current_user()
-    svc = get_or_create_service()
+    svc = todays_service()
+    if svc is None:
+        return _no_service_json()
     _, created = mark_present(person, svc, user.id, "staff")
     if created:
         audit(user.username, "checkin", f"{person.id}:{person.full_name}")
@@ -136,7 +153,9 @@ def api_visitor():
     if len(name) < 3 or not phone:
         return jsonify(error="Enter the full name and a valid mobile number."), 400
     user = current_user()
-    svc = get_or_create_service()
+    svc = todays_service()
+    if svc is None:
+        return _no_service_json()
     person, _ = upsert_adult(name, phone, "visitor", None)
     mark_present(person, svc, user.id, "staff")
     audit(user.username, "visitor", f"{person.id}:{person.full_name}")
@@ -146,7 +165,9 @@ def api_visitor():
 @bp.get("/children")
 @role_required("children")
 def children():
-    svc = get_or_create_service()
+    svc = todays_service()
+    if svc is None:
+        return _no_service_page()
     kids = Person.query.filter_by(category="child").order_by(Person.full_name).all()
     atts = {a.person_id: a for a in Attendance.query.filter_by(service_id=svc.id)}
     rows = []
@@ -174,7 +195,9 @@ def child_checkin(pid):
     if child.category != "child":
         return jsonify(error="Not a child record."), 400
     user = current_user()
-    svc = get_or_create_service()
+    svc = todays_service()
+    if svc is None:
+        return _no_service_json()
     att, created = mark_present(child, svc, user.id, "staff")
     code = assign_pickup_code(att)
     if created:
@@ -187,7 +210,9 @@ def child_checkin(pid):
 @limiter.limit("30 per minute")
 def child_release():
     code = str((request.get_json(silent=True) or {}).get("code", "")).strip()
-    svc = get_or_create_service()
+    svc = todays_service()
+    if svc is None:
+        return _no_service_json()
     att = Attendance.query.filter_by(service_id=svc.id, pickup_code=code, released_at=None).first() if code else None
     if not att:
         return jsonify(error="No waiting child has that pickup code."), 404

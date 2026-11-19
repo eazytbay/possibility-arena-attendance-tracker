@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block title %}No service today{% endblock %}
+{% block nav %}{% include "_nav.html" %}{% endblock %}
+{% block hero %}<section class="hero left"><div class="in"><h1>No service today</h1><p>Attendance is only taken on service days</p></div></section>{% endblock %}
+{% block body %}<div class="sheet"><div class="note">Today is not a service day, so nobody can be marked present. The next service is <strong>{{ next_date.strftime('%A %d %B %Y') }}</strong>.</div>
+<p class="sub">You can still register new people from the Register page (they are saved but not marked present), and the admin pages work as usual.</p></div>{% endblock %}
