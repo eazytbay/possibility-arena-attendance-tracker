@@ -189,3 +189,33 @@ def test_test_send_goes_to_one_number_only(client, app, people, monkeypatch):
     monkeypatch.setattr(bc, "in_send_hours", lambda now=None: True)
     client.post("/admin/messages/test", data={"id": b.id, "phone": "07033881015"})
     assert [p for p, _ in fake.sent] == ["07033881015"] and db.session.get(Broadcast, b.id).status == "draft"
+
+
+def test_visitors_audience(app, people):
+    assert [p.full_name for p in bc.audience_people("visitors", [])[0]] == ["Visitor One"]
+
+
+def test_selection_leaves_out_unticked_people(client, app, people, monkeypatch):
+    login(client, "admin")
+    client.post("/admin/messages/preview", data={"audience": "workers", "text": "Hi {name}"})
+    b = Broadcast.query.one()
+    ada = Person.query.filter_by(full_name="Ada Obi").one()
+    fake = Fake()
+    monkeypatch.setattr("app.blueprints.admin.provider_from_config", lambda cfg: fake)
+    monkeypatch.setattr("app.services.sms.provider_from_config", lambda cfg: fake)
+    monkeypatch.setattr(bc, "in_send_hours", lambda now=None: True)
+    # nobody ticked: refused, still a draft
+    client.post(f"/admin/messages/{b.id}/send", data={"sure": "yes", "selection": "1"})
+    assert db.session.get(Broadcast, b.id).status == "draft" and not fake.sent
+    client.post(f"/admin/messages/{b.id}/send", data={"sure": "yes", "selection": "1", "person": [str(ada.id)]})
+    assert [t for _, t in fake.sent] == ["Hi Ada"]
+
+
+def test_people_here_today_can_be_found(app, people):
+    from app.models import Attendance, Service
+    from app.services.attendance import today_local
+    s = Service(service_date=today_local(), name="x", access_code="ABCDE")
+    db.session.add(s); db.session.commit()
+    ada = Person.query.filter_by(full_name="Ada Obi").one()
+    db.session.add(Attendance(person_id=ada.id, service_id=s.id)); db.session.commit()
+    assert bc.present_today_ids() == {ada.id}

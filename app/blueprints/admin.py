@@ -332,13 +332,18 @@ def messages_preview():
                                recent=recent, counts=bc.counts, sms_on=_sms_on(), error=err,
                                cap=current_app.config["SMS_BROADCAST_MAX"]), 400
     _, skipped = bc.audience_people(kind, depts)
-    people = [r.person for r in draft.recipients]
-    samples = [(p.full_name, bc.render(draft.text, p)) for p in people[:3]]
-    longest = max((len(bc.render(draft.text, p)) for p in people), default=len(draft.text))
+    return _preview_page(draft, skipped)
+
+
+def _preview_page(b: Broadcast, skipped: int = 0, phone: str = ""):
+    people = [r.person for r in b.recipients]
+    longest = max((len(bc.render(b.text, p)) for p in people), default=len(b.text))
     n_pages = bc.pages(longest)
-    return render_template("message_preview.html", b=draft, n=len(people), skipped=skipped, samples=samples,
-                           longest=longest, n_pages=n_pages, credits=n_pages * len(people), sms_on=_sms_on(),
-                           in_hours=bc.in_send_hours(), phone="")
+    return render_template("message_preview.html", b=b, n=len(people), skipped=skipped, people=people,
+                           here=bc.present_today_ids(), picked={r.person_id for r in b.recipients if r.status == "pending"},
+                           samples=[(p.full_name, bc.render(b.text, p)) for p in people[:3]], longest=longest,
+                           n_pages=n_pages, credits=n_pages * len(people), sms_on=_sms_on(),
+                           in_hours=bc.in_send_hours(), phone=phone)
 
 
 @bp.post("/messages/test")
@@ -371,13 +376,7 @@ def messages_preview_again(bid: int):
     b = db.session.get(Broadcast, bid)
     if not b or b.status != "draft":
         return redirect(url_for("admin.messages"))
-    people = [r.person for r in b.recipients]
-    longest = max((len(bc.render(b.text, p)) for p in people), default=len(b.text))
-    n_pages = bc.pages(longest)
-    return render_template("message_preview.html", b=b, n=len(people), skipped=0,
-                           samples=[(p.full_name, bc.render(b.text, p)) for p in people[:3]], longest=longest,
-                           n_pages=n_pages, credits=n_pages * len(people), sms_on=_sms_on(),
-                           in_hours=bc.in_send_hours(), phone=request.args.get("phone", ""))
+    return _preview_page(b, 0, request.args.get("phone", ""))
 
 
 @bp.post("/messages/<int:bid>/send")
@@ -389,6 +388,10 @@ def messages_send(bid: int):
     if not _sms_on():
         flash("SMS is switched off, so nothing was sent.")
         return redirect(url_for("admin.messages_preview_again", bid=bid))
+    if request.form.get("selection") == "1":
+        if bc.apply_selection(bid, {int(x) for x in request.form.getlist("person") if x.isdigit()}) == 0:
+            flash("No one is ticked. Tick at least one person.")
+            return redirect(url_for("admin.messages_preview_again", bid=bid))
     if bc.confirm(bid):
         audit(current_user().username, "message_send", f"broadcast {bid}")
         bc.start_in_background(current_app._get_current_object(), bid)

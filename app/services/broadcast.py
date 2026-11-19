@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo
 
 from flask import current_app
 
-from ..models import Broadcast, BroadcastRecipient, DEPARTMENTS, Person, PersonDepartment, db
+from ..models import Attendance, Broadcast, BroadcastRecipient, DEPARTMENTS, Person, PersonDepartment, Service, db
 from .greetings import SEND_FROM_HOUR, SEND_UNTIL_HOUR, _clean
 from .message_text import MAX_NAME, greeting_name
 
@@ -26,6 +26,7 @@ log = logging.getLogger(__name__)
 AUDIENCES = {
     "all": "Everyone (members, workers, ministers and teens)",
     "workers": "All workers",
+    "visitors": "Visitors (not yet counted as members)",
     "members": "Members only",
     "departments": "Workers in chosen departments",
 }
@@ -75,6 +76,8 @@ def audience_people(kind: str, departments: list[str]) -> tuple[list[Person], in
         q = q.filter(Person.category == "worker")
     elif kind == "members":
         q = q.filter(Person.category == "member")
+    elif kind == "visitors":
+        q = q.filter(Person.category == "visitor")
     elif kind == "departments":
         q = q.filter(Person.dept_rows.any(PersonDepartment.department.in_(departments or ["-"])))
     else:
@@ -104,6 +107,30 @@ def create_draft(user: str, kind: str, departments: list[str], text: str) -> Bro
     db.session.add(b)
     db.session.commit()
     return b
+
+
+def present_today_ids() -> set[int]:
+    """People checked in at today's service (Lagos date), so they can be left out of a reminder in one tap."""
+    from .attendance import today_local
+    svc = Service.query.filter_by(service_date=today_local()).first()
+    if not svc:
+        return set()
+    return {a.person_id for a in Attendance.query.filter_by(service_id=svc.id)}
+
+
+def apply_selection(broadcast_id: int, person_ids: set[int]) -> int:
+    """While still a draft: only the ticked people stay on the list, the rest are left out. Returns how many remain."""
+    b = db.session.get(Broadcast, broadcast_id)
+    if not b or b.status != "draft":
+        return 0
+    keep = 0
+    for r in b.recipients:
+        if r.person_id in person_ids:
+            r.status, keep = "pending", keep + 1
+        else:
+            r.status = "skipped"
+    db.session.commit()
+    return keep
 
 
 def confirm(broadcast_id: int) -> bool:
