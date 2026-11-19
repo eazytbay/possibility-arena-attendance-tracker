@@ -108,6 +108,7 @@ def search():
         Attendance.service_id == svc.id, Attendance.person_id.in_([p.id for p in people]))}
     return jsonify([{
         "id": p.id, "name": p.full_name, "category": p.category, "department": p.department or "",
+        "departments": p.departments,
         "phone_tail": (p.phone or "")[-4:], "present": p.id in present, "photo": p.has_photo,
     } for p in people])
 

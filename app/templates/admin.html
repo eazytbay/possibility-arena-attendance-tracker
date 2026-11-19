@@ -34,6 +34,7 @@
 <h2>By category</h2>
 <table>{% for c,n in by_cat.items() %}<tr><td>{{ c|capitalize }}</td><td>{{ n }}</td></tr>{% else %}<tr><td>No one yet.</td><td></td></tr>{% endfor %}</table>
 <h2>By department</h2>
+<p class="sub">Someone who serves in two departments is counted in both.</p>
 <table>{% for d,n in by_dept %}<tr><td>{{ d }}</td><td>{{ n }}</td></tr>{% else %}<tr><td>None yet.</td><td></td></tr>{% endfor %}</table>
 <h2>Birthdays in {{ month_name }}</h2>
 <table>{% for b in birthdays %}<tr><td>{{ b.full_name }}{% if b.birth_day == today_day %} <span class="pill g">today</span>{% endif %}</td><td>{{ b.birth_day }} {{ month_name[:3] }}</td></tr>{% else %}<tr><td>No birthdays recorded yet.</td><td></td></tr>{% endfor %}</table>

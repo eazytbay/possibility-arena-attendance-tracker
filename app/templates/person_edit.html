@@ -22,8 +22,9 @@
 <label for="bm">Birthday (no year)</label>
 <div class="row"><select id="bm" name="birth_month" aria-label="Birth month"><option value="">Month</option>{% for m in months %}<option value="{{ loop.index }}" {{ 'selected' if (v.get('birth_month', p.birth_month|string if p.birth_month else ''))==loop.index|string }}>{{ m }}</option>{% endfor %}</select>
 <select name="birth_day" aria-label="Birth day"><option value="">Day</option>{% for d in range(1,32) %}<option value="{{ d }}" {{ 'selected' if (v.get('birth_day', p.birth_day|string if p.birth_day else ''))==d|string }}>{{ d }}</option>{% endfor %}</select></div>
-<label for="d">Department</label>
-<select id="d" name="department"><option value="">None</option>{% for d in departments %}<option {{ 'selected' if v.get('department', p.department)==d }}>{{ d }}</option>{% endfor %}</select>
+{% set sel = form.getlist('department') if form else p.departments %}
+<fieldset id="dept" class="checks"><legend>Departments (tick all that apply)</legend>
+{% for d in departments %}<label class="check"><input type="checkbox" name="department" value="{{ d }}" {{ 'checked' if d in sel }}> {{ d }}</label>{% endfor %}</fieldset>
 <label for="ph2">Photo</label>
 {% if p.has_photo %}<p><img src="{{ url_for('staff.photo', pid=p.id) }}" alt="Current photo of {{ p.full_name }}" width="96" height="96" style="border-radius:8px"></p>
 <label style="font-weight:400"><input type="checkbox" name="remove_photo" value="1"> Remove this photo</label>{% endif %}

@@ -10,9 +10,10 @@ import re
 
 from werkzeug.security import generate_password_hash
 
-from ..models import AGE_GROUPS, CATEGORIES, DEPARTMENTS, REGISTER_CATEGORIES, MONTHS, ROLES, SEXES, Attendance, Person, Service, User, db
+from ..models import (AGE_GROUPS, CATEGORIES, DEPARTMENTS, REGISTER_CATEGORIES, MONTHS, ROLES, SEXES, Attendance, Person,
+                      PersonDepartment, Service, User, db)
 from ..services.absence import absent_csv, absent_on, missed_in_a_row, sundays_held
-from ..services.attendance import (parse_birthday, attendance_all_csv, attendance_csv, audit, get_or_create_service, new_access_code,
+from ..services.attendance import (parse_birthday, parse_departments, attendance_all_csv, attendance_csv, audit, get_or_create_service, new_access_code,
                                    filter_people, people_csv, visit_counts, visitor_status)
 from ..services.phone import normalize_phone
 from ..services.photos import photo_from_request, process_photo
@@ -36,9 +37,10 @@ def dashboard():
     by_cat = dict(db.session.query(cat_expr, func.count()).select_from(Attendance)
                   .join(Person, Person.id == Attendance.person_id)
                   .filter(Attendance.service_id == svc.id).group_by(cat_expr).all())
-    by_dept = db.session.query(Person.department, func.count()).join(
-        Attendance, Attendance.person_id == Person.id).filter(
-        Attendance.service_id == svc.id, Person.department.isnot(None)).group_by(Person.department).all()
+    # A person who serves in two departments is counted once in each of them.
+    by_dept = db.session.query(PersonDepartment.department, func.count()).join(
+        Attendance, Attendance.person_id == PersonDepartment.person_id).filter(
+        Attendance.service_id == svc.id).group_by(PersonDepartment.department).all()
     visitors = [a.person for a in base.all() if (a.category_at_visit or a.person.category) == "visitor"]
     first_time = sum(1 for p in visitors if visitor_status(p, svc) == "first-time visitor")
     services = Service.query.order_by(Service.service_date.desc()).limit(20).all()
@@ -252,15 +254,15 @@ def edit_person(pid):
             category = f.get("category", "")
             raw_phone = (f.get("phone") or "").strip()
             phone = normalize_phone(raw_phone) if raw_phone else None
-            department = f.get("department") or None
+            departments, derr = parse_departments(f)
             sex = f.get("sex") or None
             bm, bd, berr = parse_birthday(f)
             if category not in REGISTER_CATEGORIES:
                 error = "Please choose a category."
             elif not phone and not (category == "teen" and not raw_phone):
                 error = "Enter a valid Nigerian mobile number, for example 08012345678."
-            elif department and department not in DEPARTMENTS:
-                error = "Please choose a department from the list."
+            elif derr:
+                error = derr
             elif sex and sex not in SEXES:
                 error = "Please choose male or female."
             elif berr:
@@ -277,7 +279,7 @@ def edit_person(pid):
                     error = str(exc)
             if not error:
                 person.full_name, person.phone, person.category = name, phone, category
-                person.department = None if category == "visitor" else department
+                person.set_departments([] if category == "visitor" else departments)
                 person.sex, person.birth_month, person.birth_day = sex, bm, bd
                 person.sms_opt_in = f.get("sms_opt_in") == "1"
                 if f.get("remove_photo") == "1":

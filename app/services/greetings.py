@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 from flask import current_app
 
 from ..models import MessageLog, Person, db
-from .message_text import HOLIDAYS, birthday_text, holiday_text, new_month_text
+from .message_text import HOLIDAYS, birthday_text, greeting_name, holiday_text, new_month_text
 
 log = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class RunReport:
 
 
 def _first_name(person: Person) -> str:
-    return (person.full_name.split() or ["friend"])[0].capitalize()
+    return greeting_name(person.full_name)
 
 
 def _clean(text: str) -> str:

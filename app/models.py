@@ -28,7 +28,6 @@ class Person(db.Model):
     full_name = db.Column(db.String(120), nullable=False, index=True)
     phone = db.Column(db.String(15), unique=True, nullable=True)
     category = db.Column(db.String(12), nullable=False)
-    department = db.Column(db.String(40), nullable=True)
     sex = db.Column(db.String(6), nullable=True)
     age_group = db.Column(db.String(8), nullable=True)
     notes = db.Column(db.String(300), nullable=True)
@@ -40,6 +39,39 @@ class Person(db.Model):
     guardian_id = db.Column(db.Integer, db.ForeignKey("people.id"), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
     guardian = db.relationship("Person", remote_side=[id], backref="children")
+    # A person can serve in several departments. One row per (person, department) in person_departments.
+    # The old people.department column is no longer used (left in the database so a rollback still works).
+    dept_rows = db.relationship("PersonDepartment", cascade="all, delete-orphan", lazy="selectin",
+                                back_populates="person")
+
+    @property
+    def departments(self) -> list[str]:
+        """Departments in the church's usual order (the order of DEPARTMENTS)."""
+        have = {r.department for r in self.dept_rows}
+        return [d for d in DEPARTMENTS if d in have]
+
+    @property
+    def department(self) -> str:
+        """All departments as one text, for lists and exports: 'Choir, Media'."""
+        return ", ".join(self.departments)
+
+    def set_departments(self, names) -> None:
+        """Replace this person's departments. Unknown names are ignored; repeats are removed."""
+        wanted = {n for n in (names or []) if n in DEPARTMENTS}
+        for row in list(self.dept_rows):
+            if row.department not in wanted:
+                self.dept_rows.remove(row)
+        have = {r.department for r in self.dept_rows}
+        for name in DEPARTMENTS:
+            if name in wanted and name not in have:
+                self.dept_rows.append(PersonDepartment(department=name))
+
+
+class PersonDepartment(db.Model):
+    __tablename__ = "person_departments"
+    person_id = db.Column(db.Integer, db.ForeignKey("people.id", ondelete="CASCADE"), primary_key=True)
+    department = db.Column(db.String(40), primary_key=True)
+    person = db.relationship("Person", back_populates="dept_rows")
 
 
 class Service(db.Model):

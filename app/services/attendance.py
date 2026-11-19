@@ -11,7 +11,7 @@ from flask import current_app
 from sqlalchemy.exc import IntegrityError
 
 from ..models import (ADULT_CATEGORIES, AGE_GROUPS, CATEGORIES, DEPARTMENTS, REGISTER_CATEGORIES, SEXES,
-                      Attendance, AuditLog, Person, Service, db)
+                      Attendance, AuditLog, Person, PersonDepartment, Service, db)
 from .phone import normalize_phone
 
 log = logging.getLogger(__name__)
@@ -114,7 +114,15 @@ def parse_birthday(f):
     return mi, di, None
 
 
-def upsert_adult(name: str, phone: str | None, category: str, department: str | None,
+def parse_departments(f):
+    """Return (departments, error): the ticked departments in the church's usual order. None ticked is fine."""
+    picked = [d for d in f.getlist("department") if d]
+    if any(d not in DEPARTMENTS for d in picked):
+        return None, "Please choose departments from the list."
+    return [d for d in DEPARTMENTS if d in picked], None
+
+
+def upsert_adult(name: str, phone: str | None, category: str, departments,
                  birth=(None, None), sex: str | None = None):
     """Find by phone (or by exact name for a teen without a phone) or create.
 
@@ -132,12 +140,12 @@ def upsert_adult(name: str, phone: str | None, category: str, department: str | 
             person.sex = sex
         if not (category == "visitor" and person.category in ADULT_CATEGORIES and person.category != "visitor"):
             person.category = category
-            person.department = department
+            person.set_departments(departments)
         person.full_name = name
         db.session.commit()
         return person, False
-    person = Person(full_name=name, phone=phone, category=category, department=department,
-                    birth_month=birth[0], birth_day=birth[1], sex=sex)
+    person = Person(full_name=name, phone=phone, category=category, birth_month=birth[0], birth_day=birth[1], sex=sex)
+    person.set_departments(departments)
     db.session.add(person)
     try:
         db.session.commit()
@@ -204,6 +212,10 @@ def _match(att: Attendance, flt: dict) -> bool:
     for k, v in flt.items():
         if not v:
             continue
+        if k == "department":
+            if v not in person.departments:
+                return False
+            continue
         have = (att.category_at_visit or person.category) if k == "category" else getattr(person, k)
         if have != v:
             return False
@@ -249,7 +261,7 @@ def filter_people(args):
     elif cat:
         q = q.filter(Person.category == cat)
     if args.get("department") in DEPARTMENTS:
-        q = q.filter(Person.department == args["department"])
+        q = q.filter(Person.dept_rows.any(PersonDepartment.department == args["department"]))
     if args.get("sex") in SEXES:
         q = q.filter(Person.sex == args["sex"])
     if (args.get("month") or "").isdigit() and 1 <= int(args["month"]) <= 12:
@@ -297,7 +309,7 @@ def register_full(f, svc: Service, user_id: int | None = None, source: str = "se
     phone = normalize_phone(raw_phone) if raw_phone else None
     name = " ".join(f.get("full_name", "").split())[:120]
     category = f.get("category", "")
-    department = f.get("department") or None
+    departments, derr = parse_departments(f)
     sex = f.get("sex") or None
     if len(name) < 3:
         return None, "Please enter the full name."
@@ -305,15 +317,15 @@ def register_full(f, svc: Service, user_id: int | None = None, source: str = "se
         return None, "Please choose member, worker, minister, teen or visitor."
     if not phone and not (category == "teen" and not raw_phone):
         return None, "Enter a valid Nigerian mobile number, for example 08012345678."
-    if department and department not in DEPARTMENTS:
-        return None, "Please choose a department from the list."
+    if derr:
+        return None, derr
     if sex and sex not in SEXES:
         return None, "Please choose male or female."
     bm, bd, berr = parse_birthday(f)
     if berr:
         return None, berr
     if category == "visitor":
-        department = None
+        departments = []
     if not confirmed:
         existing = _find_existing(name, phone)
         if existing:
@@ -321,7 +333,7 @@ def register_full(f, svc: Service, user_id: int | None = None, source: str = "se
             same_name = " ".join(existing.full_name.lower().split()) == name.lower()
             if att or not same_name:
                 return {"confirm": existing, "checked_in_at": att.checked_in_at if att else None}, None
-    person, created = upsert_adult(name, phone, category, department, (bm, bd), sex)
+    person, created = upsert_adult(name, phone, category, departments, (bm, bd), sex)
     if photo:
         person.photo, person.has_photo = photo, True
         db.session.commit()

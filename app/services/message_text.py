@@ -31,6 +31,48 @@ HOLIDAYS = {
 HOLIDAY_TEXTS = {kind: _load(fname) for kind, fname in HOLIDAYS.values()}
 
 
+# Titles people are recorded with. A name that starts with one is greeted by title and surname ("Mrs Bada"),
+# not by the title alone ("Mrs"). Keys are lower case without a trailing dot; values are how the title is written.
+TITLES = {
+    "mr": "Mr", "mrs": "Mrs", "miss": "Miss", "ms": "Ms", "mummy": "Mummy", "daddy": "Daddy", "mama": "Mama",
+    "papa": "Papa", "madam": "Madam", "sir": "Sir", "elder": "Elder", "pastor": "Pastor", "pst": "Pastor",
+    "deacon": "Deacon", "dcn": "Deacon", "deaconess": "Deaconess", "dcns": "Deaconess", "evang": "Evangelist",
+    "evangelist": "Evangelist", "minister": "Minister", "rev": "Rev", "reverend": "Reverend", "bishop": "Bishop",
+    "apostle": "Apostle", "prophet": "Prophet", "prophetess": "Prophetess", "a/p": "A/P", "dr": "Dr",
+    "engr": "Engr", "prof": "Prof", "chief": "Chief", "hon": "Hon", "barr": "Barr", "sis": "Sister",
+    "sister": "Sister", "bro": "Brother", "brother": "Brother", "alhaji": "Alhaji", "alhaja": "Alhaja",
+    "oba": "Oba",
+}
+
+
+def _is_initials(word: str) -> bool:
+    letters = word.replace(".", "")
+    return len(letters) < 2 or (word.isupper() and "." in word)
+
+
+def greeting_name(full_name: str) -> str:
+    """The name used in a greeting: the first name, or title plus surname when the name starts with a title.
+
+    "Tosin Ojuloge" -> "Tosin"; "Mrs Bada" -> "Mrs Bada"; "Mrs A.O. Shorun" -> "Mrs Shorun";
+    "Mr Sunday Alaja" -> "Mr Alaja". If title plus surname is longer than MAX_NAME the surname alone is used,
+    so a text never starts with a chopped-off word. A name that is only a title becomes "friend".
+    """
+    words = full_name.split()
+    if not words:
+        return "friend"
+    title = TITLES.get(words[0].lower().rstrip("."))
+    if title is None:
+        return words[0].capitalize()
+    rest = words[1:]
+    if not rest:
+        return "friend"
+    names = [w for w in rest if not _is_initials(w)] or rest
+    surname = names[-1].strip(".").title()
+    if len(title) + 1 + len(surname) <= MAX_NAME:
+        return f"{title} {surname}"
+    return surname
+
+
 def short_name(name: str) -> str:
     return name[:MAX_NAME]
 
