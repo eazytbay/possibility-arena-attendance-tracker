@@ -1,0 +1,30 @@
+{% extends "base.html" %}{% block title %}Messages{% endblock %}
+{% block nav %}{% include "_nav.html" %}{% endblock %}
+{% block mainclass %}wide{% endblock %}
+{% block hero %}<section class="hero left"><div class="in"><h1>Send a message</h1><p>Programme reminders and notices by SMS</p></div></section>{% endblock %}
+{% block body %}<div class="sheet">
+{% if not sms_on %}<div class="note" role="alert">SMS is switched off on this server, so you can write and preview a message but nothing can be sent.</div>{% endif %}
+{% if error %}<div class="note" role="alert">{{ error }}</div>{% endif %}
+{% set sel = form.getlist('department') if form.getlist is defined else [] %}
+<form method="post" action="{{ url_for('admin.messages_preview') }}" class="card">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<fieldset class="checks" style="margin-top:0"><legend>Who is it for?</legend>
+{% for k, label in audiences.items() %}<label class="opt"><input type="radio" name="audience" value="{{ k }}" {{ 'checked' if form.get('audience', 'all') == k }}> {{ label }}</label>{% endfor %}</fieldset>
+<fieldset class="checks"><legend>Departments (only used for "chosen departments")</legend>
+{% for d in departments %}<label class="opt"><input type="checkbox" name="department" value="{{ d }}" {{ 'checked' if d in sel }}> {{ d }}</label>{% endfor %}</fieldset>
+<label for="mt">Message</label>
+<textarea id="mt" name="text" rows="6" required maxlength="1000" style="height:auto;padding:12px 14px">{{ form.get('text', '') }}</textarea>
+<p class="sub" id="cnt" aria-live="polite">0 characters</p>
+<p class="sub">Type <strong>{name}</strong> where you want each person's name (for example "Dear {name},"). Plain letters and numbers only. One SMS page is 160 characters; longer messages use more credit. Texts go out only between 8am and 8pm.</p>
+<button class="full" type="submit">Preview (nothing is sent yet)</button></form>
+<h2>Recent messages</h2>
+<table>{% for r in recent %}{% set c = counts(r) %}<tr><td><a href="{{ url_for('admin.message_status', bid=r.id) }}">{{ r.created_at.strftime('%d %b %H:%M') }}</a><br><span class="sub">{{ r.audience }}</span></td>
+<td><span class="pill {{ 'g' if r.status == 'done' else '' }}">{{ r.status }}</span><br><span class="sub">{{ c.sent }}/{{ c.total }} sent{% if c.failed %}, {{ c.failed }} failed{% endif %}</span></td></tr>
+{% else %}<tr><td>No messages sent yet.</td><td></td></tr>{% endfor %}</table>
+<script>
+(function(){var t=document.getElementById('mt'),c=document.getElementById('cnt');
+function u(){var n=t.value.replace('{name}','WWWWWWWWWWWWWW').length,p=n<=160?1:Math.ceil(n/153);
+c.textContent=n+' characters at most, '+p+' SMS page'+(p>1?'s':'')+' per person';}
+t.addEventListener('input',u);u();})();
+</script>
+</div>{% endblock %}

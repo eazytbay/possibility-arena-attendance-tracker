@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% block title %}Message status{% endblock %}
+{% block nav %}{% include "_nav.html" %}{% endblock %}
+{% block mainclass %}wide{% endblock %}
+{% block hero %}<section class="hero left"><div class="in"><h1>Message status</h1><p>{{ b.audience }}</p></div></section>{% endblock %}
+{% block head %}{% if active %}<meta http-equiv="refresh" content="8">{% endif %}{% endblock %}
+{% block body %}<div class="sheet">
+<div class="stats">
+<div class="stat"><b>{{ c.sent }}</b><span>sent</span></div>
+<div class="stat"><b>{{ c.pending + c.sending }}</b><span>waiting</span></div>
+<div class="stat"><b>{{ c.failed }}</b><span>failed</span></div></div>
+{% if b.status == 'queued' %}<div class="note">{% if in_hours %}Sending now. This page refreshes by itself.{% else %}Outside 8am to 8pm in Lagos. The rest will go out automatically from 8am.{% endif %}</div>
+{% elif b.status == 'done' %}<div class="note">Finished.</div>
+{% elif b.status == 'cancelled' %}<div class="note">Stopped. People not yet texted were not texted.</div>{% endif %}
+{% if b.error %}<div class="note" role="alert">Sending stopped: {{ b.error }}. Check your Bulk SMS Nigeria credit, then wait for the next hourly run or tell me.</div>{% endif %}
+<p class="sub" style="white-space:pre-wrap">{{ b.text }}</p>
+{% if b.status == 'queued' %}<form method="post" action="{{ url_for('admin.message_cancel', bid=b.id) }}" onsubmit="return confirm('Stop sending the rest?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost" type="submit">Stop sending</button></form>{% endif %}
+<h2>People</h2>
+<table>{% for r in rows %}<tr><td>{{ r.person.full_name }}<br><span class="sub">{{ r.person.phone }}</span></td><td><span class="pill {{ 'g' if r.status == 'sent' else '' }}">{{ r.status }}</span>{% if r.error %}<br><span class="sub">{{ r.error }}</span>{% endif %}</td></tr>{% endfor %}</table>
+<a class="btn ghost" href="{{ url_for('admin.messages') }}">Back to messages</a>
+</div>{% endblock %}

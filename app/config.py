@@ -28,3 +28,5 @@ class Config:
     # Optional single-wording overrides (leave empty to use the built-in rotating wording)
     SMS_TEXT_BIRTHDAY = os.environ.get("SMS_TEXT_BIRTHDAY", "")
     SMS_TEXT_NEW_MONTH = os.environ.get("SMS_TEXT_NEW_MONTH", "")
+    # Most people one admin-sent message may go to (a guard against a wrong tap). Raise it in .env if the church grows.
+    SMS_BROADCAST_MAX = int(os.environ.get("SMS_BROADCAST_MAX", "500"))

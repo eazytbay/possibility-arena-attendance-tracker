@@ -133,3 +133,30 @@ class MessageLog(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
     person = db.relationship("Person")
+
+
+class Broadcast(db.Model):
+    """A one-off message an admin sends to a group (programme reminders and the like)."""
+    __tablename__ = "broadcasts"
+    id = db.Column(db.Integer, primary_key=True)
+    created_by = db.Column(db.String(80), nullable=False)
+    audience = db.Column(db.String(200), nullable=False)     # plain-words description, e.g. "Workers in Choir, Media"
+    text = db.Column(db.String(1000), nullable=False)        # may contain {name}
+    status = db.Column(db.String(10), nullable=False, default="draft")  # draft | queued | done | cancelled
+    error = db.Column(db.String(200), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+    recipients = db.relationship("BroadcastRecipient", cascade="all, delete-orphan", back_populates="broadcast",
+                                 order_by="BroadcastRecipient.person_id")
+
+
+class BroadcastRecipient(db.Model):
+    __tablename__ = "broadcast_recipients"
+    broadcast_id = db.Column(db.Integer, db.ForeignKey("broadcasts.id", ondelete="CASCADE"), primary_key=True)
+    person_id = db.Column(db.Integer, db.ForeignKey("people.id", ondelete="CASCADE"), primary_key=True)
+    status = db.Column(db.String(8), nullable=False, default="pending")  # pending | sending | sent | failed | skipped
+    error = db.Column(db.String(200), nullable=True)
+    provider_id = db.Column(db.String(64), nullable=True)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+    broadcast = db.relationship("Broadcast", back_populates="recipients")
+    person = db.relationship("Person")

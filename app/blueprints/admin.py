@@ -10,12 +10,14 @@ import re
 
 from werkzeug.security import generate_password_hash
 
-from ..models import (AGE_GROUPS, CATEGORIES, DEPARTMENTS, REGISTER_CATEGORIES, MONTHS, ROLES, SEXES, Attendance, Person,
+from ..models import (AGE_GROUPS, Broadcast, CATEGORIES, DEPARTMENTS, REGISTER_CATEGORIES, MONTHS, ROLES, SEXES, Attendance, Person,
                       PersonDepartment, Service, User, db)
 from ..services.absence import absent_csv, absent_on, missed_in_a_row, sundays_held
 from ..services.attendance import (parse_birthday, parse_departments, attendance_all_csv, attendance_csv, audit, get_or_create_service, new_access_code,
                                    filter_people, people_csv, visit_counts, visitor_status)
+from ..services import broadcast as bc
 from ..services.phone import normalize_phone
+from ..services.sms import provider_from_config
 from ..services.photos import photo_from_request, process_photo
 from .auth import current_user, owner_required, role_required
 
@@ -295,3 +297,119 @@ def edit_person(pid):
     return render_template("person_edit.html", p=person, is_child=is_child, error=error, form=request.form,
                            categories=REGISTER_CATEGORIES, sexes=SEXES, departments=DEPARTMENTS,
                            age_groups=AGE_GROUPS, months=MONTHS)
+
+
+# ---- Messages: one-off texts to a group (programme reminders) --------------------------------------------
+
+def _sms_on() -> bool:
+    return provider_from_config(current_app.config) is not None
+
+
+@bp.get("/messages")
+@role_required()
+def messages():
+    recent = Broadcast.query.filter(Broadcast.status != "draft").order_by(Broadcast.id.desc()).limit(15).all()
+    return render_template("messages.html", audiences=bc.AUDIENCES, departments=DEPARTMENTS, form=request.args,
+                           recent=recent, counts=bc.counts, sms_on=_sms_on(), error=None,
+                           cap=current_app.config["SMS_BROADCAST_MAX"])
+
+
+@bp.post("/messages/preview")
+@role_required()
+def messages_preview():
+    kind, depts, err = bc.parse_audience(request.form)
+    text, terr = bc.check_text(request.form.get("text", ""))
+    err = err or terr
+    draft = None
+    if not err:
+        try:
+            draft = bc.create_draft(current_user().username, kind, depts, text)
+        except ValueError as exc:
+            err = str(exc)
+    if err:
+        recent = Broadcast.query.filter(Broadcast.status != "draft").order_by(Broadcast.id.desc()).limit(15).all()
+        return render_template("messages.html", audiences=bc.AUDIENCES, departments=DEPARTMENTS, form=request.form,
+                               recent=recent, counts=bc.counts, sms_on=_sms_on(), error=err,
+                               cap=current_app.config["SMS_BROADCAST_MAX"]), 400
+    _, skipped = bc.audience_people(kind, depts)
+    people = [r.person for r in draft.recipients]
+    samples = [(p.full_name, bc.render(draft.text, p)) for p in people[:3]]
+    longest = max((len(bc.render(draft.text, p)) for p in people), default=len(draft.text))
+    n_pages = bc.pages(longest)
+    return render_template("message_preview.html", b=draft, n=len(people), skipped=skipped, samples=samples,
+                           longest=longest, n_pages=n_pages, credits=n_pages * len(people), sms_on=_sms_on(),
+                           in_hours=bc.in_send_hours(), phone="")
+
+
+@bp.post("/messages/test")
+@role_required()
+def messages_test():
+    """Send the draft to ONE number (the admin's own) so it can be read on a real phone before everyone gets it."""
+    b = db.session.get(Broadcast, request.form.get("id", type=int) or 0)
+    phone = normalize_phone(request.form.get("phone", ""))
+    provider = provider_from_config(current_app.config)
+    if not b or b.status != "draft":
+        flash("That draft is no longer available. Start again.")
+        return redirect(url_for("admin.messages"))
+    if provider is None:
+        flash("SMS is switched off, so nothing can be sent.")
+    elif not phone:
+        flash("Enter a valid Nigerian mobile number for the test.")
+    elif not bc.in_send_hours():
+        flash("Texts can only be sent between 8am and 8pm. Try the test again in the morning.")
+    else:
+        sample = Person(full_name=current_user().username, phone=phone)
+        res = provider.send(phone, bc.render(b.text, sample))
+        flash("Test sent. Check your phone." if res.ok else f"The test failed: {res.error or res.code}")
+        audit(current_user().username, "message_test", f"draft {b.id}")
+    return redirect(url_for("admin.messages_preview_again", bid=b.id))
+
+
+@bp.get("/messages/<int:bid>/preview")
+@role_required()
+def messages_preview_again(bid: int):
+    b = db.session.get(Broadcast, bid)
+    if not b or b.status != "draft":
+        return redirect(url_for("admin.messages"))
+    people = [r.person for r in b.recipients]
+    longest = max((len(bc.render(b.text, p)) for p in people), default=len(b.text))
+    n_pages = bc.pages(longest)
+    return render_template("message_preview.html", b=b, n=len(people), skipped=0,
+                           samples=[(p.full_name, bc.render(b.text, p)) for p in people[:3]], longest=longest,
+                           n_pages=n_pages, credits=n_pages * len(people), sms_on=_sms_on(),
+                           in_hours=bc.in_send_hours(), phone=request.args.get("phone", ""))
+
+
+@bp.post("/messages/<int:bid>/send")
+@role_required()
+def messages_send(bid: int):
+    if request.form.get("sure") != "yes":
+        flash("Tick the box to confirm you have checked the message and the number of people.")
+        return redirect(url_for("admin.messages_preview_again", bid=bid))
+    if not _sms_on():
+        flash("SMS is switched off, so nothing was sent.")
+        return redirect(url_for("admin.messages_preview_again", bid=bid))
+    if bc.confirm(bid):
+        audit(current_user().username, "message_send", f"broadcast {bid}")
+        bc.start_in_background(current_app._get_current_object(), bid)
+    return redirect(url_for("admin.message_status", bid=bid))
+
+
+@bp.get("/messages/<int:bid>")
+@role_required()
+def message_status(bid: int):
+    b = db.session.get(Broadcast, bid)
+    if not b or b.status == "draft":
+        return redirect(url_for("admin.messages"))
+    c = bc.counts(b)
+    return render_template("message_status.html", b=b, c=c, active=c["pending"] + c["sending"] > 0 and b.status == "queued",
+                           in_hours=bc.in_send_hours(), rows=b.recipients)
+
+
+@bp.post("/messages/<int:bid>/cancel")
+@role_required()
+def message_cancel(bid: int):
+    bc.cancel(bid)
+    audit(current_user().username, "message_cancel", f"broadcast {bid}")
+    flash("Stopped. People not yet texted will not be texted.")
+    return redirect(url_for("admin.message_status", bid=bid))

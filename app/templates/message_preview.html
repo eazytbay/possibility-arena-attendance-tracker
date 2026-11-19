@@ -1,0 +1,26 @@
+{% extends "base.html" %}{% block title %}Check the message{% endblock %}
+{% block nav %}{% include "_nav.html" %}{% endblock %}
+{% block mainclass %}wide{% endblock %}
+{% block hero %}<section class="hero left"><div class="in"><h1>Check before sending</h1><p>Nothing has been sent yet</p></div></section>{% endblock %}
+{% block body %}<div class="sheet">
+{% if not sms_on %}<div class="note" role="alert">SMS is switched off on this server. You can look, but nothing can be sent.</div>{% endif %}
+<div class="stats">
+<div class="stat"><b>{{ n }}</b><span>people will get it</span></div>
+<div class="stat"><b>{{ n_pages }}</b><span>SMS page{{ 's' if n_pages != 1 }} each</span></div>
+<div class="stat"><b>{{ credits }}</b><span>SMS credits in total</span></div></div>
+<p class="sub">For: <strong>{{ b.audience }}</strong>.{% if skipped %} {{ skipped }} other {{ 'person is' if skipped == 1 else 'people are' }} in that group but skipped (no phone number, or switched off texts).{% endif %} Children are never texted.</p>
+<h2>What people will receive</h2>
+{% for name, text in samples %}<div class="card"><span class="sub">To {{ name }}</span><p style="white-space:pre-wrap;margin:6px 0 0">{{ text }}</p></div>{% else %}<p class="sub">No one is in that group, so nothing would be sent.</p>{% endfor %}
+{% if not in_hours %}<div class="note">It is outside 8am to 8pm in Lagos. If you confirm now, the texts will start going out automatically from 8am (the hourly job sends them).</div>{% endif %}
+<h2>Test on your own phone first (recommended)</h2>
+<form method="post" action="{{ url_for('admin.messages_test') }}" class="card">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ b.id }}">
+<label for="tp" style="margin-top:0">Your number</label><input id="tp" name="phone" inputmode="tel" placeholder="08012345678" value="{{ phone }}">
+<button class="ghost full" type="submit">Send one test text to me</button></form>
+{% if n %}<h2>Send to everyone</h2>
+<form method="post" action="{{ url_for('admin.messages_send', bid=b.id) }}" class="card">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<label class="opt"><input type="checkbox" name="sure" value="yes"> I have read the message and I am happy to send it to {{ n }} {{ 'person' if n == 1 else 'people' }}.</label>
+<button class="full" type="submit" {{ 'disabled' if not sms_on }}>Send now</button></form>{% endif %}
+<a class="btn ghost" href="{{ url_for('admin.messages') }}">Back and edit</a>
+</div>{% endblock %}

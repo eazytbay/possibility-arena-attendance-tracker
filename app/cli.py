@@ -83,6 +83,13 @@ def register_cli(app):
             click.echo("SMS is off or not configured (SMS_ENABLED, SMS_API_TOKEN, SMS_SENDER_ID). Nothing sent.")
             return
         r = run_greetings(provider, now=now, dry_run=dry_run)
+        if not dry_run:
+            # Also finish any admin-sent messages still waiting (confirmed outside sending hours, or interrupted).
+            from .services.broadcast import process
+            b = process(provider)
+            if b["sent"] or b["failed"]:
+                click.echo(f"broadcasts: sent={b['sent']} failed={b['failed']}"
+                           + (f" STOPPED: {b['stopped']}" if b["stopped"] else ""))
         for line in r.dry_lines:
             click.echo(line)
         if r.outside_hours:

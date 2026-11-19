@@ -8,6 +8,7 @@
 <link rel="icon" href="{{ url_for('static', filename='rccg-seal.png') }}">
 <title>{% block title %}Attendance{% endblock %} · Possibility Arena</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+{% block head %}{% endblock %}
 </head>
 <body>
 {% if demo_mode %}<div class="demo-banner">Demo with sample data only. Everything resets daily. Real church data is never shown here.</div>{% endif %}
