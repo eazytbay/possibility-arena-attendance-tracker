@@ -27,7 +27,7 @@
 <select name="birth_day" aria-label="Birth day"><option value="">Day</option>{% for d in range(1,32) %}<option value="{{ d }}" {{ 'selected' if form.get('birth_day')==d|string }}>{{ d }}</option>{% endfor %}</select></div>
 {% set sel = form.getlist('department') if form and form.getlist is defined else [] %}
 <fieldset id="dept" class="checks"><legend>Departments (tick all that apply)</legend>
-{% for d in departments %}<label class="check"><input type="checkbox" name="department" value="{{ d }}" {{ 'checked' if d in sel }}> {{ d }}</label>{% endfor %}</fieldset>
+{% for d in departments %}<label class="opt"><input type="checkbox" name="department" value="{{ d }}" {{ 'checked' if d in sel }}> {{ d }}</label>{% endfor %}</fieldset>
 <label for="ph2">Photo (optional, adults only)</label>
 {% with facing='environment' %}{% include '_photo_field.html' %}{% endwith %}
 <p class="sub" style="margin:6px 0 0">Used only to recognise people in the church's attendance records. It is shrunk to a small thumbnail.</p>
